@@ -1219,6 +1219,152 @@ document.getElementById('roomType').addEventListener('change', function() {
     }
 });
 
+// 寝室类型分配相关函数
+function showRoomTypeAllocationModal() {
+    document.getElementById('roomTypeAllocationModal').style.display = 'flex';
+    loadUnallocatedRoomTypeUsers();
+    resetRoomTypeAllocationSelection();
+}
+
+function hideRoomTypeAllocationModal() {
+    document.getElementById('roomTypeAllocationModal').style.display = 'none';
+    resetRoomTypeAllocationSelection();
+}
+
+function resetRoomTypeAllocationSelection() {
+    selectedRoomTypeUserId = null;
+    selectedRoomTypeUserName = '';
+    document.getElementById('selectedRoomTypeUserInfo').style.display = 'none';
+    document.getElementById('roomTypeSelect').value = '';
+    document.getElementById('roomTypeNotes').value = '';
+    document.getElementById('confirmRoomTypeAllocationBtn').disabled = true;
+    document.getElementById('unallocatedRoomTypeUserSearch').value = '';
+}
+
+async function loadUnallocatedRoomTypeUsers() {
+    const search = document.getElementById('unallocatedRoomTypeUserSearch').value;
+    
+    try {
+        const response = await api.getUnallocatedRoomTypeUsers(1, 50, search);
+        
+        if (!response.users || response.users.length === 0) {
+            document.getElementById('unallocatedRoomTypeUsersTable').innerHTML = '<p>暂无未分配寝室类型用户</p>';
+            return;
+        }
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>姓名</th>
+                        <th>用户名</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${response.users.map(user => `
+                        <tr ${selectedRoomTypeUserId === user.id ? 'style="background-color: #e3f2fd;"' : ''}>
+                            <td>${user.name}</td>
+                            <td>${user.username}</td>
+                            <td>
+                                <button class="btn btn-outline btn-sm" onclick="selectUserForRoomType(${user.id}, '${user.name}')">
+                                    ${selectedRoomTypeUserId === user.id ? '已选择' : '选择'}
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('unallocatedRoomTypeUsersTable').innerHTML = table;
+    } catch (error) {
+        showAlert(error.message, 'error');
+        document.getElementById('unallocatedRoomTypeUsersTable').innerHTML = '<p>加载失败</p>';
+    }
+}
+
+function selectUserForRoomType(userId, userName) {
+    selectedRoomTypeUserId = userId;
+    selectedRoomTypeUserName = userName;
+    document.getElementById('selectedRoomTypeUserName').textContent = userName;
+    document.getElementById('selectedRoomTypeUserInfo').style.display = 'block';
+    loadUnallocatedRoomTypeUsers(); // 重新加载以更新选择状态
+    updateRoomTypeConfirmButton();
+}
+
+function updateRoomTypeConfirmButton() {
+    const roomType = document.getElementById('roomTypeSelect').value;
+    const confirmBtn = document.getElementById('confirmRoomTypeAllocationBtn');
+    confirmBtn.disabled = !(selectedRoomTypeUserId && roomType);
+}
+
+// 添加事件监听器
+document.getElementById('roomTypeSelect').addEventListener('change', updateRoomTypeConfirmButton);
+
+async function confirmRoomTypeAllocation() {
+    if (!selectedRoomTypeUserId) {
+        showAlert('请选择用户', 'error');
+        return;
+    }
+    
+    const roomType = document.getElementById('roomTypeSelect').value;
+    const notes = document.getElementById('roomTypeNotes').value;
+    
+    if (!roomType) {
+        showAlert('请选择寝室类型', 'error');
+        return;
+    }
+    
+    try {
+        const response = await api.createRoomTypeAllocation({
+            user_id: selectedRoomTypeUserId,
+            room_type: roomType,
+            notes: notes
+        });
+        
+        showAlert(response.message, 'success');
+        hideRoomTypeAllocationModal();
+        loadRoomTypeAllocations(); // 重新加载分配列表
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function editRoomTypeAllocation(allocationId, currentRoomType, currentNotes) {
+    const newRoomType = prompt('请选择新的寝室类型 (4 或 8):', currentRoomType);
+    if (!newRoomType || !['4', '8'].includes(newRoomType)) {
+        showAlert('寝室类型只能是4或8', 'error');
+        return;
+    }
+    
+    const newNotes = prompt('备注:', currentNotes || '');
+    
+    try {
+        const response = await api.updateRoomTypeAllocation(allocationId, {
+            room_type: newRoomType,
+            notes: newNotes || ''
+        });
+        
+        showAlert(response.message, 'success');
+        loadRoomTypeAllocations();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function deleteRoomTypeAllocation(allocationId) {
+    if (!confirm('确定要删除此寝室类型分配吗？')) return;
+    
+    try {
+        const response = await api.deleteRoomTypeAllocation(allocationId);
+        showAlert(response.message, 'success');
+        loadRoomTypeAllocations();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
 // 抽签管理相关函数
 function showQuickLotteryModal() {
     document.getElementById('quickLotteryModal').style.display = 'flex';
