@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
-from werkzeug.security import generate_password_hash, check_password_hash
+import bcrypt
 
 db = SQLAlchemy()
 
@@ -20,10 +20,10 @@ class User(UserMixin, db.Model):
     room_selections = db.relationship('RoomSelection', backref='user', lazy=True)
     
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
     
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        return bcrypt.checkpw(password.encode('utf-8'), self.password_hash.encode('utf-8'))
     
     def to_dict(self):
         return {
