@@ -34,21 +34,35 @@
 ### 👥 用户管理
 - ✅ 用户注册、登录、个人信息管理
 - ✅ CSV文件批量导入用户（姓名、用户名、密码）
-- ✅ 用户密码自主修改
-- ✅ 管理员权限管理
+- ✅ 手动创建单个用户账户
+- ✅ 用户密码自主修改和管理员重置
+- ✅ 管理员权限管理和用户删除
 
 ### 🎲 抽签系统
 - ✅ 创建抽签活动，设置公布时间
 - ✅ 支持4人间/8人间不同宿舍类型
+- ✅ 一键抽签功能，自动生成抽签结果
+- ✅ 抽签结果预览，支持发布/删除操作
 - ✅ 自动生成抽签号码，公平透明
 - ✅ 分组管理，便于组织
 - ✅ 管理员可修改抽签结果
 
 ### 🏠 宿舍管理
 - ✅ 建筑、房间、床位三级管理
+- ✅ 建筑管理：新增、删除（含安全检查）
+- ✅ 房间管理：单个创建 + CSV批量导入
+- ✅ 房间导入格式：building_name,room_number,room_type,max_capacity
 - ✅ 实时显示宿舍占用情况
 - ✅ 查看同宿舍室友信息
 - ✅ 支持宿舍预览和选择
+
+### 🎯 寝室类型分配系统（核心功能）
+- ✅ 分离寝室类型分配和具体宿舍分配
+- ✅ 学生先被分配寝室类型（4人间/8人间）
+- ✅ 后台可修改学生的寝室类型分配
+- ✅ 具体宿舍选择受寝室类型限制
+- ✅ 双级管理：类型分配 → 具体房间分配
+- ✅ 完整的分配历史记录
 
 ### ⚡ 高并发选择
 - ✅ Redis分布式锁机制
@@ -408,9 +422,33 @@ docker-compose -f docker-compose.prod.yml up -d
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
 | GET | `/api/admin/users` | 获取用户列表 | 管理员 |
+| POST | `/api/admin/users` | 创建单个用户 | 管理员 |
 | POST | `/api/admin/users/import` | 批量导入用户 | 管理员 |
 | DELETE | `/api/admin/users/{id}` | 删除用户 | 管理员 |
 | PUT | `/api/admin/users/{id}/password` | 重置密码 | 管理员 |
+
+### 建筑管理接口
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/admin/buildings` | 获取建筑列表 | 管理员 |
+| POST | `/api/admin/buildings` | 创建建筑 | 管理员 |
+| DELETE | `/api/admin/buildings/{id}` | 删除建筑 | 管理员 |
+
+### 房间管理接口
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/admin/rooms` | 获取房间列表 | 管理员 |
+| POST | `/api/admin/rooms` | 创建房间 | 管理员 |
+| POST | `/api/admin/rooms/import` | 批量导入房间 | 管理员 |
+
+### 寝室类型分配接口
+| 方法 | 路径 | 说明 | 权限 |
+|------|------|------|------|
+| GET | `/api/admin/room-type-allocations` | 获取寝室类型分配 | 管理员 |
+| POST | `/api/admin/room-type-allocations` | 创建寝室类型分配 | 管理员 |
+| PUT | `/api/admin/room-type-allocations/{id}` | 修改寝室类型分配 | 管理员 |
+| DELETE | `/api/admin/room-type-allocations/{id}` | 删除寝室类型分配 | 管理员 |
+| GET | `/api/admin/unallocated-room-type-users` | 获取未分配寝室类型用户 | 管理员 |
 
 ### 抽签接口
 | 方法 | 路径 | 说明 | 权限 |
@@ -419,6 +457,10 @@ docker-compose -f docker-compose.prod.yml up -d
 | POST | `/api/lottery/settings` | 创建抽签 | 管理员 |
 | POST | `/api/lottery/settings/{id}/publish` | 公布抽签 | 管理员 |
 | GET | `/api/lottery/results` | 获取抽签结果 | 所有用户 |
+| POST | `/api/admin/lottery/quick-draw` | 一键抽签 | 管理员 |
+| POST | `/api/admin/lottery/{id}/publish` | 发布抽签结果 | 管理员 |
+| DELETE | `/api/admin/lottery/{id}` | 删除抽签结果 | 管理员 |
+| GET | `/api/admin/lottery/results` | 获取所有抽签结果 | 管理员 |
 
 ### 宿舍选择接口
 | 方法 | 路径 | 说明 | 权限 |
@@ -445,17 +487,57 @@ name,username,password
 - `username`: 用户名，系统内唯一（必填）
 - `password`: 密码，至少6位（必填）
 
+### 房间导入格式
+CSV文件必须包含以下列：
+
+```csv
+building_name,room_number,room_type,max_capacity
+A栋,101,4,4
+A栋,102,4,4
+A栋,103,8,8
+B栋,201,4,4
+B栋,202,8,8
+```
+
+**字段说明：**
+- `building_name`: 建筑名称，必须是已存在的建筑（必填）
+- `room_number`: 房间号，在同一建筑内唯一（必填）
+- `room_type`: 房间类型，只能是4或8（必填）
+- `max_capacity`: 最大容量，必须在1-8之间（必填）
+
+**注意事项：**
+- 建筑必须在导入房间前先创建
+- 系统会自动为每个房间创建对应数量的床位
+- 重复的房间会被跳过
+
 ### 数据库结构
 ```sql
 -- 主要表结构
-users              -- 用户表
-lottery_settings   -- 抽签设置
-buildings          -- 建筑表
-rooms              -- 房间表
-beds               -- 床位表
-lottery_results    -- 抽签结果
-room_selections    -- 宿舍选择
-allocation_history -- 分配历史
+users                   -- 用户表
+lottery_settings        -- 抽签设置
+buildings               -- 建筑表
+rooms                   -- 房间表
+beds                    -- 床位表
+lottery_results         -- 抽签结果
+room_type_allocations   -- 寝室类型分配（新增）
+room_selections         -- 宿舍选择
+allocation_history      -- 分配历史
+```
+
+### 系统流程
+```mermaid
+graph TD
+    A[创建用户] --> B[分配寝室类型]
+    B --> C[进行抽签]
+    C --> D[发布抽签结果]
+    D --> E[学生选择具体宿舍]
+    E --> F[确认分配]
+    
+    B --> G[管理员手动分配寝室类型]
+    G --> E
+    
+    C --> H[管理员修改抽签结果]
+    H --> D
 ```
 
 ## 🛠️ 开发指南
