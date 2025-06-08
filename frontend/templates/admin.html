@@ -1,0 +1,609 @@
+{% extends "base.html" %}
+
+{% block title %}管理后台 - 宿舍抽签系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>管理后台</h1>
+    
+    <!-- 功能选项卡 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-content">
+            <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-primary" onclick="showTab('users')">用户管理</button>
+                <button type="button" class="btn btn-outline" onclick="showTab('buildings')">建筑管理</button>
+                <button type="button" class="btn btn-outline" onclick="showTab('rooms')">房间管理</button>
+                <button type="button" class="btn btn-outline" onclick="showTab('allocations')">分配管理</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 用户管理选项卡 -->
+    <div id="usersTab" class="tab-content">
+        <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">
+                <h3 class="card-title">用户管理</h3>
+            </div>
+            <div class="card-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 16px;">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" id="userSearch" class="form-input" placeholder="搜索用户..." style="width: 200px;">
+                        <button type="button" class="btn btn-outline" onclick="loadUsers()">搜索</button>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <label for="userImportFile" class="btn btn-outline">
+                            导入用户CSV
+                            <input type="file" id="userImportFile" accept=".csv" style="display: none;" onchange="importUsers()">
+                        </label>
+                    </div>
+                </div>
+                <div id="usersTable">
+                    <!-- 用户表格将通过JavaScript加载 -->
+                </div>
+                <div id="usersPagination" style="margin-top: 16px;">
+                    <!-- 分页将通过JavaScript加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 建筑管理选项卡 -->
+    <div id="buildingsTab" class="tab-content" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">建筑管理</h3>
+            </div>
+            <div class="card-content">
+                <div style="margin-bottom: 16px;">
+                    <button type="button" class="btn btn-primary" onclick="showCreateBuildingModal()">新增建筑</button>
+                </div>
+                <div id="buildingsTable">
+                    <!-- 建筑表格将通过JavaScript加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 房间管理选项卡 -->
+    <div id="roomsTab" class="tab-content" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">房间管理</h3>
+            </div>
+            <div class="card-content">
+                <div style="display: flex; gap: 16px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
+                    <select id="buildingFilter" class="form-input" style="width: 200px;" onchange="loadRooms()">
+                        <option value="">所有建筑</option>
+                    </select>
+                    <select id="roomTypeFilter" class="form-input" style="width: 150px;" onchange="loadRooms()">
+                        <option value="">所有类型</option>
+                        <option value="4">4人间</option>
+                        <option value="8">8人间</option>
+                    </select>
+                    <button type="button" class="btn btn-primary" onclick="showCreateRoomModal()">新增房间</button>
+                </div>
+                <div id="roomsTable">
+                    <!-- 房间表格将通过JavaScript加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 分配管理选项卡 -->
+    <div id="allocationsTab" class="tab-content" style="display: none;">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">宿舍分配管理</h3>
+            </div>
+            <div class="card-content">
+                <div id="allocationsTable">
+                    <!-- 分配表格将通过JavaScript加载 -->
+                </div>
+                <div id="allocationsPagination" style="margin-top: 16px;">
+                    <!-- 分页将通过JavaScript加载 -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 新增建筑模态框 -->
+<div id="createBuildingModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">新增建筑</h3>
+        </div>
+        <div class="modal-content">
+            <form id="createBuildingForm">
+                <div class="form-group">
+                    <label class="form-label">建筑名称</label>
+                    <input type="text" id="buildingName" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">描述</label>
+                    <textarea id="buildingDescription" class="form-input" rows="3"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideCreateBuildingModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="createBuilding()">创建</button>
+        </div>
+    </div>
+</div>
+
+<!-- 新增房间模态框 -->
+<div id="createRoomModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">新增房间</h3>
+        </div>
+        <div class="modal-content">
+            <form id="createRoomForm">
+                <div class="form-group">
+                    <label class="form-label">选择建筑</label>
+                    <select id="roomBuildingId" class="form-input" required>
+                        <option value="">请选择建筑</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">房间号</label>
+                    <input type="text" id="roomNumber" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">房间类型</label>
+                    <select id="roomType" class="form-input" required>
+                        <option value="">请选择类型</option>
+                        <option value="4">4人间</option>
+                        <option value="8">8人间</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">最大容量</label>
+                    <input type="number" id="maxCapacity" class="form-input" required min="1" max="8">
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideCreateRoomModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="createRoom()">创建</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTab = 'users';
+let currentUsersPage = 1;
+let currentAllocationsPage = 1;
+let buildings = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!requireAdmin()) return;
+    
+    showTab('users');
+});
+
+function showTab(tabName) {
+    // 隐藏所有选项卡
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.style.display = 'none';
+    });
+    
+    // 更新按钮状态
+    document.querySelectorAll('.card-content button').forEach(btn => {
+        btn.className = 'btn btn-outline';
+    });
+    
+    // 显示选中的选项卡
+    document.getElementById(tabName + 'Tab').style.display = 'block';
+    event.target.className = 'btn btn-primary';
+    
+    currentTab = tabName;
+    
+    // 加载对应数据
+    switch(tabName) {
+        case 'users':
+            loadUsers();
+            break;
+        case 'buildings':
+            loadBuildings();
+            break;
+        case 'rooms':
+            loadBuildingsForFilter();
+            loadRooms();
+            break;
+        case 'allocations':
+            loadAllocations();
+            break;
+    }
+}
+
+// 用户管理相关函数
+async function loadUsers() {
+    const search = document.getElementById('userSearch').value;
+    
+    try {
+        const response = await api.getUsers(currentUsersPage, 20, search);
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>姓名</th>
+                        <th>用户名</th>
+                        <th>角色</th>
+                        <th>注册时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${response.users.map(user => `
+                        <tr>
+                            <td>${user.name}</td>
+                            <td>${user.username}</td>
+                            <td>${user.is_admin ? '管理员' : '普通用户'}</td>
+                            <td>${formatDate(user.created_at)}</td>
+                            <td>
+                                ${!user.is_admin ? `
+                                    <button class="btn btn-outline" style="margin-right: 8px;" onclick="resetPassword(${user.id})">重置密码</button>
+                                    <button class="btn btn-error" onclick="deleteUser(${user.id})">删除</button>
+                                ` : ''}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('usersTable').innerHTML = table;
+        
+        // 更新分页
+        updateUsersPagination(response.current_page, response.pages);
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function importUsers() {
+    const fileInput = document.getElementById('userImportFile');
+    const file = fileInput.files[0];
+    
+    if (!file) return;
+    
+    try {
+        const response = await api.importUsers(file);
+        showAlert(`导入完成：新增 ${response.created_count} 个用户，跳过 ${response.skipped_count} 个用户`, 'success');
+        
+        if (response.errors.length > 0) {
+            showAlert(`错误信息：${response.errors.join('; ')}`, 'warning');
+        }
+        
+        loadUsers();
+        fileInput.value = '';
+    } catch (error) {
+        showAlert(error.message, 'error');
+        fileInput.value = '';
+    }
+}
+
+async function deleteUser(userId) {
+    if (!confirm('确定要删除此用户吗？')) return;
+    
+    try {
+        await api.deleteUser(userId);
+        showAlert('用户删除成功', 'success');
+        loadUsers();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function resetPassword(userId) {
+    const newPassword = prompt('请输入新密码（至少6位）：');
+    if (!newPassword || newPassword.length < 6) {
+        showAlert('密码长度不能少于6位', 'error');
+        return;
+    }
+    
+    try {
+        await api.resetUserPassword(userId, newPassword);
+        showAlert('密码重置成功', 'success');
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function updateUsersPagination(currentPage, totalPages) {
+    let paginationHtml = '';
+    
+    if (totalPages > 1) {
+        paginationHtml = '<div style="display: flex; gap: 8px; justify-content: center;">';
+        
+        if (currentPage > 1) {
+            paginationHtml += `<button class="btn btn-outline" onclick="changePage(${currentPage - 1})">上一页</button>`;
+        }
+        
+        paginationHtml += `<span style="padding: 12px;">第 ${currentPage} 页，共 ${totalPages} 页</span>`;
+        
+        if (currentPage < totalPages) {
+            paginationHtml += `<button class="btn btn-outline" onclick="changePage(${currentPage + 1})">下一页</button>`;
+        }
+        
+        paginationHtml += '</div>';
+    }
+    
+    document.getElementById('usersPagination').innerHTML = paginationHtml;
+}
+
+function changePage(page) {
+    currentUsersPage = page;
+    loadUsers();
+}
+
+// 建筑管理相关函数
+async function loadBuildings() {
+    try {
+        const response = await api.getBuildings();
+        buildings = response.buildings;
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>建筑名称</th>
+                        <th>描述</th>
+                        <th>创建时间</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${buildings.map(building => `
+                        <tr>
+                            <td>${building.name}</td>
+                            <td>${building.description || ''}</td>
+                            <td>${formatDate(building.created_at)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('buildingsTable').innerHTML = table;
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function showCreateBuildingModal() {
+    document.getElementById('createBuildingModal').style.display = 'flex';
+}
+
+function hideCreateBuildingModal() {
+    document.getElementById('createBuildingModal').style.display = 'none';
+    document.getElementById('createBuildingForm').reset();
+}
+
+async function createBuilding() {
+    const name = document.getElementById('buildingName').value;
+    const description = document.getElementById('buildingDescription').value;
+    
+    if (!name) {
+        showAlert('建筑名称不能为空', 'error');
+        return;
+    }
+    
+    try {
+        await api.createBuilding({ name, description });
+        showAlert('建筑创建成功', 'success');
+        hideCreateBuildingModal();
+        loadBuildings();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+// 房间管理相关函数
+async function loadBuildingsForFilter() {
+    try {
+        const response = await api.getBuildings();
+        buildings = response.buildings;
+        
+        const buildingSelect = document.getElementById('buildingFilter');
+        const roomBuildingSelect = document.getElementById('roomBuildingId');
+        
+        const options = buildings.map(building => 
+            `<option value="${building.id}">${building.name}</option>`
+        ).join('');
+        
+        buildingSelect.innerHTML = '<option value="">所有建筑</option>' + options;
+        roomBuildingSelect.innerHTML = '<option value="">请选择建筑</option>' + options;
+    } catch (error) {
+        console.error('加载建筑列表失败:', error);
+    }
+}
+
+async function loadRooms() {
+    const buildingId = document.getElementById('buildingFilter').value;
+    const roomType = document.getElementById('roomTypeFilter').value;
+    
+    try {
+        const response = await api.getRooms(buildingId || null, roomType || null);
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>建筑</th>
+                        <th>房间号</th>
+                        <th>类型</th>
+                        <th>容量</th>
+                        <th>当前入住</th>
+                        <th>状态</th>
+                        <th>可用床位</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${response.rooms.map(room => `
+                        <tr>
+                            <td>${room.building_name}</td>
+                            <td>${room.room_number}</td>
+                            <td>${room.room_type}人间</td>
+                            <td>${room.max_capacity}</td>
+                            <td>${room.current_occupancy}</td>
+                            <td>${room.is_available ? '可用' : '不可用'}</td>
+                            <td>${room.available_beds}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('roomsTable').innerHTML = table;
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function showCreateRoomModal() {
+    document.getElementById('createRoomModal').style.display = 'flex';
+}
+
+function hideCreateRoomModal() {
+    document.getElementById('createRoomModal').style.display = 'none';
+    document.getElementById('createRoomForm').reset();
+}
+
+async function createRoom() {
+    const buildingId = document.getElementById('roomBuildingId').value;
+    const roomNumber = document.getElementById('roomNumber').value;
+    const roomType = document.getElementById('roomType').value;
+    const maxCapacity = document.getElementById('maxCapacity').value;
+    
+    if (!buildingId || !roomNumber || !roomType || !maxCapacity) {
+        showAlert('请填写所有必填字段', 'error');
+        return;
+    }
+    
+    try {
+        await api.createRoom({
+            building_id: parseInt(buildingId),
+            room_number: roomNumber,
+            room_type: roomType,
+            max_capacity: parseInt(maxCapacity)
+        });
+        showAlert('房间创建成功', 'success');
+        hideCreateRoomModal();
+        loadRooms();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+// 分配管理相关函数
+async function loadAllocations() {
+    try {
+        const response = await api.getAllocations(currentAllocationsPage, 20);
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>学生姓名</th>
+                        <th>建筑</th>
+                        <th>房间号</th>
+                        <th>床位号</th>
+                        <th>选择时间</th>
+                        <th>确认状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${response.allocations.map(allocation => `
+                        <tr>
+                            <td>${allocation.user_name}</td>
+                            <td>${allocation.building_name}</td>
+                            <td>${allocation.room_number}</td>
+                            <td>${allocation.bed_number}</td>
+                            <td>${formatDate(allocation.selected_at)}</td>
+                            <td>${allocation.is_confirmed ? '已确认' : '未确认'}</td>
+                            <td>
+                                <button class="btn btn-outline" style="margin-right: 8px;" onclick="editAllocation(${allocation.id})">编辑</button>
+                                <button class="btn btn-error" onclick="deleteAllocation(${allocation.id})">删除</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('allocationsTable').innerHTML = table;
+        
+        // 更新分页
+        updateAllocationsPagination(response.current_page, response.pages);
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function deleteAllocation(allocationId) {
+    if (!confirm('确定要删除此分配吗？')) return;
+    
+    try {
+        await api.deleteAllocation(allocationId);
+        showAlert('分配删除成功', 'success');
+        loadAllocations();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function updateAllocationsPagination(currentPage, totalPages) {
+    let paginationHtml = '';
+    
+    if (totalPages > 1) {
+        paginationHtml = '<div style="display: flex; gap: 8px; justify-content: center;">';
+        
+        if (currentPage > 1) {
+            paginationHtml += `<button class="btn btn-outline" onclick="changeAllocationsPage(${currentPage - 1})">上一页</button>`;
+        }
+        
+        paginationHtml += `<span style="padding: 12px;">第 ${currentPage} 页，共 ${totalPages} 页</span>`;
+        
+        if (currentPage < totalPages) {
+            paginationHtml += `<button class="btn btn-outline" onclick="changeAllocationsPage(${currentPage + 1})">下一页</button>`;
+        }
+        
+        paginationHtml += '</div>';
+    }
+    
+    document.getElementById('allocationsPagination').innerHTML = paginationHtml;
+}
+
+function changeAllocationsPage(page) {
+    currentAllocationsPage = page;
+    loadAllocations();
+}
+
+// 模态框事件处理
+document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.style.display = 'none';
+        }
+    });
+});
+
+// 房间类型和容量联动
+document.getElementById('roomType').addEventListener('change', function() {
+    const maxCapacityInput = document.getElementById('maxCapacity');
+    const value = this.value;
+    
+    if (value === '4') {
+        maxCapacityInput.value = '4';
+    } else if (value === '8') {
+        maxCapacityInput.value = '8';
+    }
+});
+</script>
+{% endblock %}

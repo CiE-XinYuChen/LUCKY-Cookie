@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}宿舍选择 - 宿舍抽签系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>宿舍选择</h1>
+    
+    <!-- 我的选择状态 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h3 class="card-title">我的选择状态</h3>
+        </div>
+        <div class="card-content" id="mySelection">
+            <!-- 我的选择将通过JavaScript加载 -->
+        </div>
+    </div>
+
+    <!-- 筛选选项 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h3 class="card-title">筛选条件</h3>
+        </div>
+        <div class="card-content">
+            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+                <select id="buildingFilter" class="form-input" style="width: 200px;" onchange="loadAvailableRooms()">
+                    <option value="">所有建筑</option>
+                </select>
+                <select id="roomTypeFilter" class="form-input" style="width: 150px;" onchange="loadAvailableRooms()">
+                    <option value="">所有类型</option>
+                    <option value="4">4人间</option>
+                    <option value="8">8人间</option>
+                </select>
+                <button type="button" class="btn btn-outline" onclick="loadAvailableRooms()">刷新</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 可用房间列表 -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">可选宿舍</h3>
+        </div>
+        <div class="card-content" id="availableRooms">
+            <!-- 可用房间将通过JavaScript加载 -->
+        </div>
+    </div>
+</div>
+
+<!-- 选择确认模态框 -->
+<div id="confirmSelectionModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">确认选择</h3>
+        </div>
+        <div class="modal-content">
+            <p id="confirmMessage">确定要选择这个床位吗？</p>
+            <div id="roommates" style="margin-top: 16px;">
+                <!-- 室友信息 -->
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideConfirmModal()">取消</button>
+            <button type="button" class="btn btn-primary" id="confirmSelectBtn" onclick="confirmSelectBed()">确认选择</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedBedId = null;
+let buildings = [];
+let myCurrentSelection = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!requireAuth()) return;
+    
+    const user = getCurrentUser();
+    if (user && user.is_admin) {
+        showAlert('管理员不能选择宿舍', 'error');
+        window.location.href = '/admin';
+        return;
+    }
+    
+    loadBuildings();
+    loadMySelection();
+    loadAvailableRooms();
+});
+
+async function loadBuildings() {
+    try {
+        const response = await api.getBuildings();
+        buildings = response.buildings;
+        
+        const buildingSelect = document.getElementById('buildingFilter');
+        const options = buildings.map(building => 
+            `<option value="${building.id}">${building.name}</option>`
+        ).join('');
+        
+        buildingSelect.innerHTML = '<option value="">所有建筑</option>' + options;
+    } catch (error) {
+        console.error('加载建筑列表失败:', error);
+    }
+}
+
+async function loadMySelection() {
+    try {
+        const response = await api.getMySelection();
+        const container = document.getElementById('mySelection');
+        
+        if (!response.selection) {
+            container.innerHTML = `
+                <div class="alert alert-info">
+                    您还没有选择宿舍，请在下方选择您心仪的宿舍。
+                </div>
+            `;
+            myCurrentSelection = null;
+            return;
+        }
+        
+        const selection = response.selection;
+        myCurrentSelection = selection;
+        
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div><strong>楼栋：</strong> ${selection.building_name}</div>
+                <div><strong>房间号：</strong> ${selection.room_number}</div>
+                <div><strong>床位号：</strong> ${selection.bed_number}</div>
+                <div><strong>选择时间：</strong> ${formatDate(selection.selected_at)}</div>
+                <div><strong>确认状态：</strong> 
+                    <span class="${selection.is_confirmed ? 'text-success' : 'text-warning'}">
+                        ${selection.is_confirmed ? '已确认' : '未确认'}
+                    </span>
+                </div>
+            </div>
+            ${selection.is_confirmed ? `
+                <div class="alert alert-success">
+                    您的宿舍选择已确认，不能再更改。
+                </div>
+            ` : `
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-success" onclick="confirmMySelection()">确认当前选择</button>
+                    <button type="button" class="btn btn-outline" onclick="cancelMySelection()">取消选择</button>
+                </div>
+            `}
+        `;
+    } catch (error) {
+        document.getElementById('mySelection').innerHTML = `
+            <div class="alert alert-error">加载选择状态失败</div>
+        `;
+    }
+}
+
+async function loadAvailableRooms() {
+    const buildingId = document.getElementById('buildingFilter').value;
+    const roomType = document.getElementById('roomTypeFilter').value;
+    
+    try {
+        const response = await api.getAvailableRooms(roomType || null, buildingId || null);
+        const container = document.getElementById('availableRooms');
+        
+        if (response.rooms.length === 0) {
+            container.innerHTML = '<p>暂无可选择的宿舍</p>';
+            return;
+        }
+        
+        const roomsHtml = response.rooms.map(room => `
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-content">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                        <div><strong>楼栋：</strong> ${room.building_name}</div>
+                        <div><strong>房间号：</strong> ${room.room_number}</div>
+                        <div><strong>类型：</strong> ${room.room_type}人间</div>
+                        <div><strong>可用床位：</strong> ${room.available_beds}/${room.max_capacity}</div>
+                    </div>
+                    
+                    ${room.occupied_users.length > 0 ? `
+                        <div style="margin-bottom: 16px;">
+                            <strong>当前室友：</strong>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                                ${room.occupied_users.map(user => `
+                                    <span class="badge">${user.name} (床位${user.bed_number})</span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div>
+                        <strong>可选床位：</strong>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
+                            ${room.beds.filter(bed => !bed.is_occupied).map(bed => `
+                                <button class="btn btn-outline" 
+                                        onclick="selectBed(${bed.id}, '${room.building_name}', '${room.room_number}', '${bed.bed_number}', ${JSON.stringify(room.occupied_users).replace(/"/g, '&quot;')})"
+                                        ${myCurrentSelection && myCurrentSelection.is_confirmed ? 'disabled' : ''}>
+                                    床位 ${bed.bed_number}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        container.innerHTML = roomsHtml;
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function selectBed(bedId, buildingName, roomNumber, bedNumber, occupiedUsers) {
+    if (myCurrentSelection && myCurrentSelection.is_confirmed) {
+        showAlert('您的选择已确认，不能再更改', 'warning');
+        return;
+    }
+    
+    selectedBedId = bedId;
+    
+    document.getElementById('confirmMessage').textContent = 
+        `确定要选择 ${buildingName} ${roomNumber} 房间的 ${bedNumber} 号床位吗？`;
+    
+    const roommatesContainer = document.getElementById('roommates');
+    if (occupiedUsers.length > 0) {
+        roommatesContainer.innerHTML = `
+            <div class="alert alert-info">
+                <strong>当前室友：</strong><br>
+                ${occupiedUsers.map(user => `${user.name} (床位${user.bed_number})`).join('<br>')}
+            </div>
+        `;
+    } else {
+        roommatesContainer.innerHTML = `
+            <div class="alert alert-info">
+                这间宿舍目前还没有其他同学入住。
+            </div>
+        `;
+    }
+    
+    document.getElementById('confirmSelectionModal').style.display = 'flex';
+}
+
+async function confirmSelectBed() {
+    if (!selectedBedId) return;
+    
+    const confirmBtn = document.getElementById('confirmSelectBtn');
+    const hideLoading = showLoading(confirmBtn);
+    
+    try {
+        await api.selectRoom(selectedBedId);
+        showAlert('宿舍选择成功！', 'success');
+        hideConfirmModal();
+        loadMySelection();
+        loadAvailableRooms();
+    } catch (error) {
+        if (error.message.includes('已被占用') || error.message.includes('已被选择')) {
+            showAlert('抱歉，这个床位刚刚被其他同学选择了，请选择其他床位', 'warning');
+            hideConfirmModal();
+            loadAvailableRooms();
+        } else {
+            showAlert(error.message, 'error');
+        }
+    } finally {
+        hideLoading();
+    }
+}
+
+async function confirmMySelection() {
+    if (!confirm('确认后将不能再更改选择，确定要确认当前选择吗？')) return;
+    
+    try {
+        await api.confirmSelection();
+        showAlert('选择确认成功！', 'success');
+        loadMySelection();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function cancelMySelection() {
+    if (!confirm('确定要取消当前选择吗？取消后可以重新选择其他宿舍。')) return;
+    
+    try {
+        await api.cancelSelection();
+        showAlert('选择已取消', 'success');
+        loadMySelection();
+        loadAvailableRooms();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function hideConfirmModal() {
+    document.getElementById('confirmSelectionModal').style.display = 'none';
+    selectedBedId = null;
+}
+
+// 模态框事件处理
+document.getElementById('confirmSelectionModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideConfirmModal();
+    }
+});
+
+// 定期刷新可用房间（防止页面长时间不刷新导致信息过时）
+setInterval(function() {
+    if (!myCurrentSelection || !myCurrentSelection.is_confirmed) {
+        loadAvailableRooms();
+    }
+}, 30000); // 每30秒刷新一次
+</script>
+
+<style>
+.badge {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.text-success {
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.text-warning {
+    color: var(--warning-color);
+    font-weight: 500;
+}
+</style>
+{% endblock %}

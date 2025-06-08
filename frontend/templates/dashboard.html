@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}个人中心 - 宿舍抽签系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>个人中心</h1>
+    
+    <!-- 用户信息卡片 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h3 class="card-title">个人信息</h3>
+        </div>
+        <div class="card-content">
+            <div id="userInfo">
+                <!-- 用户信息将通过JavaScript加载 -->
+            </div>
+            <button type="button" class="btn btn-outline" onclick="showChangePasswordModal()">修改密码</button>
+        </div>
+    </div>
+
+    <!-- 抽签结果卡片 -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header">
+            <h3 class="card-title">我的抽签结果</h3>
+        </div>
+        <div class="card-content" id="lotteryResults">
+            <!-- 抽签结果将通过JavaScript加载 -->
+        </div>
+    </div>
+
+    <!-- 宿舍选择卡片 -->
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">我的宿舍选择</h3>
+        </div>
+        <div class="card-content" id="roomSelection">
+            <!-- 宿舍选择将通过JavaScript加载 -->
+        </div>
+    </div>
+</div>
+
+<!-- 修改密码模态框 -->
+<div id="changePasswordModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">修改密码</h3>
+        </div>
+        <div class="modal-content">
+            <form id="changePasswordForm">
+                <div class="form-group">
+                    <label class="form-label">当前密码</label>
+                    <input type="password" id="oldPassword" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">新密码</label>
+                    <input type="password" id="newPassword" class="form-input" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">确认新密码</label>
+                    <input type="password" id="confirmPassword" class="form-input" required minlength="6">
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideChangePasswordModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="changePassword()">修改</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let userData = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!requireAuth()) return;
+    
+    loadUserInfo();
+    loadLotteryResults();
+    loadRoomSelection();
+});
+
+async function loadUserInfo() {
+    try {
+        const response = await api.getProfile();
+        userData = response.user;
+        
+        document.getElementById('userInfo').innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div>
+                    <strong>姓名：</strong> ${userData.name}
+                </div>
+                <div>
+                    <strong>用户名：</strong> ${userData.username}
+                </div>
+                <div>
+                    <strong>注册时间：</strong> ${formatDate(userData.created_at)}
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function loadLotteryResults() {
+    try {
+        const response = await api.getLotteryResults();
+        const container = document.getElementById('lotteryResults');
+        
+        if (response.results.length === 0) {
+            container.innerHTML = '<p>暂无抽签结果</p>';
+            return;
+        }
+        
+        const resultsHtml = response.results.map(result => `
+            <div class="card" style="margin-bottom: 16px;">
+                <div class="card-content">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                        <div><strong>抽签号码：</strong> ${result.lottery_number}</div>
+                        <div><strong>分组号：</strong> ${result.group_number || '未分组'}</div>
+                        <div><strong>抽签时间：</strong> ${formatDate(result.created_at)}</div>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        container.innerHTML = resultsHtml;
+    } catch (error) {
+        document.getElementById('lotteryResults').innerHTML = '<p>加载抽签结果失败</p>';
+    }
+}
+
+async function loadRoomSelection() {
+    try {
+        const response = await api.getMySelection();
+        const container = document.getElementById('roomSelection');
+        
+        if (!response.selection) {
+            container.innerHTML = `
+                <p>您还没有选择宿舍</p>
+                <a href="/room-selection" class="btn btn-primary">立即选择宿舍</a>
+            `;
+            return;
+        }
+        
+        const selection = response.selection;
+        container.innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+                <div><strong>楼栋：</strong> ${selection.building_name}</div>
+                <div><strong>房间号：</strong> ${selection.room_number}</div>
+                <div><strong>床位号：</strong> ${selection.bed_number}</div>
+                <div><strong>选择时间：</strong> ${formatDate(selection.selected_at)}</div>
+                <div><strong>确认状态：</strong> ${selection.is_confirmed ? '已确认' : '未确认'}</div>
+            </div>
+            ${!selection.is_confirmed ? `
+                <div style="display: flex; gap: 8px;">
+                    <a href="/room-selection" class="btn btn-outline">修改选择</a>
+                    <button type="button" class="btn btn-success" onclick="confirmSelection()">确认选择</button>
+                </div>
+            ` : '<div class="alert alert-success">您的宿舍选择已确认</div>'}
+        `;
+    } catch (error) {
+        document.getElementById('roomSelection').innerHTML = '<p>加载宿舍选择失败</p>';
+    }
+}
+
+async function confirmSelection() {
+    try {
+        await api.confirmSelection();
+        showAlert('选择确认成功', 'success');
+        loadRoomSelection();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function showChangePasswordModal() {
+    document.getElementById('changePasswordModal').style.display = 'flex';
+}
+
+function hideChangePasswordModal() {
+    document.getElementById('changePasswordModal').style.display = 'none';
+    document.getElementById('changePasswordForm').reset();
+}
+
+async function changePassword() {
+    const oldPassword = document.getElementById('oldPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+    
+    if (newPassword !== confirmPassword) {
+        showAlert('新密码和确认密码不匹配', 'error');
+        return;
+    }
+    
+    if (newPassword.length < 6) {
+        showAlert('新密码长度不能少于6位', 'error');
+        return;
+    }
+    
+    try {
+        await api.changePassword(oldPassword, newPassword);
+        showAlert('密码修改成功', 'success');
+        hideChangePasswordModal();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+// 点击模态框外部关闭
+document.getElementById('changePasswordModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideChangePasswordModal();
+    }
+});
+</script>
+{% endblock %}

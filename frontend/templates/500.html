@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}服务器错误 - 宿舍抽签系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="text-align: center; padding: 60px 0;">
+        <h1 style="font-size: 96px; color: var(--error-color); margin-bottom: 24px;">500</h1>
+        <h2 style="margin-bottom: 16px;">服务器内部错误</h2>
+        <p style="color: var(--text-secondary); margin-bottom: 32px;">
+            抱歉，服务器遇到了一些问题。请稍后再试。
+        </p>
+        <a href="/" class="btn btn-primary">返回首页</a>
+    </div>
+</div>
+{% endblock %}

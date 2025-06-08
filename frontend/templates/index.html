@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}宿舍抽签系统{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="text-align: center; padding: 60px 0;">
+        <h1 style="font-size: 48px; margin-bottom: 24px; color: var(--primary-color);">宿舍抽签系统</h1>
+        <p style="font-size: 18px; color: var(--text-secondary); margin-bottom: 48px;">
+            公平、透明、高效的宿舍分配系统
+        </p>
+        
+        <div style="display: flex; gap: 24px; justify-content: center; flex-wrap: wrap;">
+            <a href="/login" class="btn btn-primary" style="font-size: 16px; padding: 16px 32px;">
+                立即登录
+            </a>
+        </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 32px; margin-top: 60px;">
+        <div class="card">
+            <div class="card-content" style="text-align: center; padding: 32px;">
+                <div style="font-size: 48px; color: var(--primary-color); margin-bottom: 16px;">🎲</div>
+                <h3 style="margin-bottom: 16px;">公平抽签</h3>
+                <p style="color: var(--text-secondary);">
+                    系统自动生成抽签号码，确保每位学生都有公平的选房机会
+                </p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-content" style="text-align: center; padding: 32px;">
+                <div style="font-size: 48px; color: var(--success-color); margin-bottom: 16px;">🏠</div>
+                <h3 style="margin-bottom: 16px;">自由选择</h3>
+                <p style="color: var(--text-secondary);">
+                    根据抽签顺序，学生可以自由选择心仪的宿舍和床位
+                </p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-content" style="text-align: center; padding: 32px;">
+                <div style="font-size: 48px; color: var(--warning-color); margin-bottom: 16px;">⚡</div>
+                <h3 style="margin-bottom: 16px;">实时更新</h3>
+                <p style="color: var(--text-secondary);">
+                    宿舍占用情况实时更新，避免冲突，支持高并发选择
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 如果已经登录，重定向到相应页面
+    if (api.token) {
+        const user = getCurrentUser();
+        if (user) {
+            if (user.is_admin) {
+                window.location.href = '/admin';
+            } else {
+                window.location.href = '/dashboard';
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

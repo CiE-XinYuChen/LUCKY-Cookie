@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}宿舍抽签系统{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/material.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <div id="alerts"></div>
+    
+    {% block navbar %}
+    <nav class="navbar">
+        <div class="container">
+            <div class="navbar-content">
+                <a href="/" class="navbar-brand">宿舍抽签系统</a>
+                <ul class="navbar-nav" id="navbar-nav">
+                    <!-- 导航项将通过JavaScript动态添加 -->
+                </ul>
+            </div>
+        </div>
+    </nav>
+    {% endblock %}
+
+    <main class="container" style="padding-top: 24px;">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/api.js') }}"></script>
+    <script>
+        // 初始化导航栏
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNavbar();
+        });
+
+        function updateNavbar() {
+            const navbarNav = document.getElementById('navbar-nav');
+            const user = getCurrentUser();
+            
+            navbarNav.innerHTML = '';
+            
+            if (user) {
+                if (user.is_admin) {
+                    navbarNav.innerHTML = `
+                        <li><a href="/dashboard">仪表板</a></li>
+                        <li><a href="/admin">管理后台</a></li>
+                        <li><a href="/lottery">抽签管理</a></li>
+                        <li><a href="#" onclick="logout()">退出登录</a></li>
+                    `;
+                } else {
+                    navbarNav.innerHTML = `
+                        <li><a href="/dashboard">个人中心</a></li>
+                        <li><a href="/lottery">抽签结果</a></li>
+                        <li><a href="/room-selection">宿舍选择</a></li>
+                        <li><a href="#" onclick="logout()">退出登录</a></li>
+                    `;
+                }
+            } else {
+                navbarNav.innerHTML = `
+                    <li><a href="/login">登录</a></li>
+                `;
+            }
+        }
+
+        function logout() {
+            api.logout();
+            window.location.href = '/login';
+        }
+
+        // 设置当前页面的导航项为激活状态
+        function setActiveNavItem() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.navbar-nav a');
+            
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+        }
+
+        // 页面加载完成后设置激活状态
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(setActiveNavItem, 100);
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
