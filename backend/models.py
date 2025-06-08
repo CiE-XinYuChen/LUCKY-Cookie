@@ -185,6 +185,34 @@ class RoomSelection(db.Model):
             'is_confirmed': self.is_confirmed
         }
 
+class RoomTypeAllocation(db.Model):
+    __tablename__ = 'room_type_allocations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    room_type = db.Column(db.String(10), nullable=False)  # '4' or '8'
+    allocated_by = db.Column(db.Integer, db.ForeignKey('users.id'))  # 操作人员
+    allocated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    notes = db.Column(db.Text)
+    
+    __table_args__ = (db.UniqueConstraint('user_id'),)
+    
+    user = db.relationship('User', foreign_keys=[user_id], backref='room_type_allocation')
+    allocator = db.relationship('User', foreign_keys=[allocated_by])
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'user_name': self.user.name if self.user else None,
+            'user_username': self.user.username if self.user else None,
+            'room_type': self.room_type,
+            'allocated_by': self.allocated_by,
+            'allocator_name': self.allocator.name if self.allocator else None,
+            'allocated_at': self.allocated_at.isoformat() if self.allocated_at else None,
+            'notes': self.notes
+        }
+
 class AllocationHistory(db.Model):
     __tablename__ = 'allocation_history'
     

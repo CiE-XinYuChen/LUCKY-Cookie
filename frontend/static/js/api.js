@@ -166,6 +166,10 @@ class API {
         return this.post('/api/admin/buildings', buildingData);
     }
 
+    async deleteBuilding(buildingId) {
+        return this.delete(`/api/admin/buildings/${buildingId}`);
+    }
+
     async getRooms(buildingId = null, roomType = null) {
         const params = {};
         if (buildingId) params.building_id = buildingId;
@@ -175,6 +179,36 @@ class API {
 
     async createRoom(roomData) {
         return this.post('/api/admin/rooms', roomData);
+    }
+
+    async importRooms(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const config = {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${this.token}`
+            },
+            body: formData
+        };
+
+        try {
+            const response = await fetch(this.baseURL + '/api/admin/rooms/import', config);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || '请求失败');
+            }
+
+            return data;
+        } catch (error) {
+            if (error.message.includes('401') || error.message.includes('token')) {
+                this.logout();
+                window.location.href = '/login';
+            }
+            throw error;
+        }
     }
 
     async getAllocations(page = 1, perPage = 20) {
@@ -187,6 +221,27 @@ class API {
 
     async getUnallocatedUsers(page = 1, perPage = 20, search = '') {
         return this.get('/api/admin/unallocated-users', { page, per_page: perPage, search });
+    }
+
+    // 寝室类型分配 API
+    async getRoomTypeAllocations(page = 1, perPage = 20, search = '') {
+        return this.get('/api/admin/room-type-allocations', { page, per_page: perPage, search });
+    }
+
+    async createRoomTypeAllocation(allocationData) {
+        return this.post('/api/admin/room-type-allocations', allocationData);
+    }
+
+    async updateRoomTypeAllocation(allocationId, data) {
+        return this.put(`/api/admin/room-type-allocations/${allocationId}`, data);
+    }
+
+    async deleteRoomTypeAllocation(allocationId) {
+        return this.delete(`/api/admin/room-type-allocations/${allocationId}`);
+    }
+
+    async getUnallocatedRoomTypeUsers(page = 1, perPage = 20, search = '') {
+        return this.get('/api/admin/unallocated-room-type-users', { page, per_page: perPage, search });
     }
 
     async updateAllocation(allocationId, data) {

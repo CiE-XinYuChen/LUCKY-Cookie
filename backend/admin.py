@@ -3,7 +3,7 @@ import io
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
-from .models import db, User, LotterySetting, Building, Room, Bed, LotteryResult, RoomSelection, AllocationHistory
+from .models import db, User, LotterySetting, Building, Room, Bed, LotteryResult, RoomSelection, AllocationHistory, RoomTypeAllocation
 from .auth import admin_required
 from datetime import datetime
 
@@ -212,6 +212,26 @@ def create_building():
         db.session.rollback()
         return jsonify({'error': '创建失败'}), 500
 
+@admin_bp.route('/buildings/<int:building_id>', methods=['DELETE'])
+@admin_required
+def delete_building(building_id):
+    building = Building.query.get(building_id)
+    if not building:
+        return jsonify({'error': '建筑不存在'}), 404
+    
+    # 检查是否有房间关联
+    rooms = Room.query.filter_by(building_id=building_id).first()
+    if rooms:
+        return jsonify({'error': '该建筑下还有房间，无法删除。请先删除所有房间。'}), 400
+    
+    try:
+        db.session.delete(building)
+        db.session.commit()
+        return jsonify({'message': '建筑删除成功'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '删除失败'}), 500
+
 @admin_bp.route('/rooms', methods=['GET'])
 @admin_required
 def get_rooms():
@@ -269,6 +289,99 @@ def create_room():
         db.session.rollback()
         return jsonify({'error': '创建失败'}), 500
 
+@admin_bp.route('/rooms/import', methods=['POST'])
+@admin_required
+def import_rooms():
+    if 'file' not in request.files:
+        return jsonify({'error': '没有上传文件'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': '没有选择文件'}), 400
+    
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({'error': '只支持CSV文件'}), 400
+    
+    try:
+        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+        csv_input = pd.read_csv(stream)
+        
+        required_columns = ['building_name', 'room_number', 'room_type', 'max_capacity']
+        if not all(col in csv_input.columns for col in required_columns):
+            return jsonify({'error': f'CSV文件必须包含以下列: {", ".join(required_columns)}'}), 400
+        
+        created_count = 0
+        skipped_count = 0
+        errors = []
+        
+        for index, row in csv_input.iterrows():
+            try:
+                building_name = str(row['building_name']).strip()
+                room_number = str(row['room_number']).strip()
+                room_type = str(row['room_type']).strip()
+                max_capacity = int(row['max_capacity'])
+                
+                if not building_name or not room_number or not room_type:
+                    errors.append(f'第{index + 2}行: 建筑名称、房间号和房间类型不能为空')
+                    continue
+                
+                if room_type not in ['4', '8']:
+                    errors.append(f'第{index + 2}行: 房间类型只能是4或8')
+                    continue
+                
+                if max_capacity < 1 or max_capacity > 8:
+                    errors.append(f'第{index + 2}行: 最大容量必须在1-8之间')
+                    continue
+                
+                # 查找建筑
+                building = Building.query.filter_by(name=building_name).first()
+                if not building:
+                    errors.append(f'第{index + 2}行: 建筑"{building_name}"不存在')
+                    continue
+                
+                # 检查房间是否已存在
+                if Room.query.filter_by(building_id=building.id, room_number=room_number).first():
+                    skipped_count += 1
+                    continue
+                
+                # 创建房间
+                room = Room(
+                    building_id=building.id,
+                    room_number=room_number,
+                    room_type=room_type,
+                    max_capacity=max_capacity
+                )
+                
+                db.session.add(room)
+                db.session.flush()  # 获取room.id
+                
+                # 为房间创建床位
+                for i in range(1, max_capacity + 1):
+                    bed = Bed(room_id=room.id, bed_number=str(i))
+                    db.session.add(bed)
+                
+                created_count += 1
+                
+            except ValueError as e:
+                errors.append(f'第{index + 2}行: 数据格式错误 - {str(e)}')
+            except Exception as e:
+                errors.append(f'第{index + 2}行: {str(e)}')
+        
+        try:
+            db.session.commit()
+            return jsonify({
+                'message': '房间导入完成',
+                'created_count': created_count,
+                'skipped_count': skipped_count,
+                'errors': errors
+            }), 200
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': '数据库保存失败'}), 500
+            
+    except Exception as e:
+        return jsonify({'error': f'文件处理失败: {str(e)}'}), 500
+
 @admin_bp.route('/allocations', methods=['GET'])
 @admin_required
 def get_allocations():
@@ -280,6 +393,169 @@ def get_allocations():
     
     return jsonify({
         'allocations': [allocation.to_dict() for allocation in allocations],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    }), 200
+
+@admin_bp.route('/room-type-allocations', methods=['GET'])
+@admin_required
+def get_room_type_allocations():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '')
+    
+    query = RoomTypeAllocation.query
+    if search:
+        query = query.join(User).filter(
+            db.or_(
+                User.username.ilike(f'%{search}%'),
+                User.name.ilike(f'%{search}%')
+            )
+        )
+    
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    allocations = pagination.items
+    
+    return jsonify({
+        'allocations': [allocation.to_dict() for allocation in allocations],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    }), 200
+
+@admin_bp.route('/room-type-allocations', methods=['POST'])
+@admin_required
+def create_room_type_allocation():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    required_fields = ['user_id', 'room_type']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': '缺少必要字段'}), 400
+    
+    user_id = data.get('user_id')
+    room_type = data.get('room_type')
+    notes = data.get('notes', '')
+    
+    # 验证用户存在且不是管理员
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': '用户不存在'}), 404
+    
+    if user.is_admin:
+        return jsonify({'error': '不能为管理员分配寝室类型'}), 400
+    
+    # 验证房间类型
+    if room_type not in ['4', '8']:
+        return jsonify({'error': '房间类型只能是4或8'}), 400
+    
+    # 检查用户是否已有分配
+    existing_allocation = RoomTypeAllocation.query.filter_by(user_id=user_id).first()
+    if existing_allocation:
+        return jsonify({'error': '用户已有寝室类型分配'}), 409
+    
+    current_user_id = get_jwt_identity()
+    
+    try:
+        # 创建寝室类型分配记录
+        allocation = RoomTypeAllocation(
+            user_id=user_id,
+            room_type=room_type,
+            allocated_by=current_user_id,
+            notes=notes
+        )
+        
+        db.session.add(allocation)
+        db.session.commit()
+        
+        return jsonify({
+            'message': '寝室类型分配成功',
+            'allocation': allocation.to_dict()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '分配失败'}), 500
+
+@admin_bp.route('/room-type-allocations/<int:allocation_id>', methods=['PUT'])
+@admin_required
+def update_room_type_allocation(allocation_id):
+    allocation = RoomTypeAllocation.query.get(allocation_id)
+    if not allocation:
+        return jsonify({'error': '分配记录不存在'}), 404
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    try:
+        if 'room_type' in data:
+            if data['room_type'] not in ['4', '8']:
+                return jsonify({'error': '房间类型只能是4或8'}), 400
+            allocation.room_type = data['room_type']
+        
+        if 'notes' in data:
+            allocation.notes = data['notes']
+        
+        allocation.allocated_by = get_jwt_identity()
+        allocation.allocated_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': '寝室类型分配更新成功',
+            'allocation': allocation.to_dict()
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '更新失败'}), 500
+
+@admin_bp.route('/room-type-allocations/<int:allocation_id>', methods=['DELETE'])
+@admin_required
+def delete_room_type_allocation(allocation_id):
+    allocation = RoomTypeAllocation.query.get(allocation_id)
+    if not allocation:
+        return jsonify({'error': '分配记录不存在'}), 404
+    
+    try:
+        db.session.delete(allocation)
+        db.session.commit()
+        
+        return jsonify({'message': '寝室类型分配删除成功'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '删除失败'}), 500
+
+@admin_bp.route('/unallocated-room-type-users', methods=['GET'])
+@admin_required
+def get_unallocated_room_type_users():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '')
+    
+    # 获取已分配寝室类型的用户ID
+    allocated_user_ids = db.session.query(RoomTypeAllocation.user_id).subquery()
+    
+    # 查询未分配寝室类型的非管理员用户
+    query = User.query.filter(
+        User.is_admin == False,
+        ~User.id.in_(allocated_user_ids)
+    )
+    
+    if search:
+        query = query.filter(
+            db.or_(
+                User.username.ilike(f'%{search}%'),
+                User.name.ilike(f'%{search}%')
+            )
+        )
+    
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    users = pagination.items
+    
+    return jsonify({
+        'users': [user.to_dict() for user in users],
         'total': pagination.total,
         'pages': pagination.pages,
         'current_page': page
@@ -317,6 +593,11 @@ def create_allocation():
     
     if bed.room_id != room.id:
         return jsonify({'error': '床位不属于指定房间'}), 400
+    
+    # 检查用户寝室类型分配
+    room_type_allocation = RoomTypeAllocation.query.filter_by(user_id=user_id).first()
+    if room_type_allocation and room_type_allocation.room_type != room.room_type:
+        return jsonify({'error': f'用户被分配到{room_type_allocation.room_type}人间，不能分配到{room.room_type}人间'}), 400
     
     # 检查用户是否已有分配
     existing_allocation = RoomSelection.query.filter_by(user_id=user_id).first()

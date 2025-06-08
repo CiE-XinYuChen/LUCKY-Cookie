@@ -82,6 +82,10 @@
                         <option value="8">8人间</option>
                     </select>
                     <button type="button" class="btn btn-primary" onclick="showCreateRoomModal()">新增房间</button>
+                    <label for="roomImportFile" class="btn btn-outline">
+                        批量导入房间CSV
+                        <input type="file" id="roomImportFile" accept=".csv" style="display: none;" onchange="importRooms()">
+                    </label>
                 </div>
                 <div id="roomsTable">
                     <!-- 房间表格将通过JavaScript加载 -->
@@ -99,19 +103,40 @@
             <div class="card-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 16px;">
                     <div>
-                        <h4>宿舍分配管理</h4>
+                        <h4>寝室类型分配管理</h4>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn btn-primary" onclick="showManualAllocationModal()">手动分配</button>
+                        <button type="button" class="btn btn-primary" onclick="showRoomTypeAllocationModal()">分配寝室类型</button>
+                        <button type="button" class="btn btn-outline" onclick="showManualAllocationModal()">分配具体宿舍</button>
                         <button type="button" class="btn btn-outline" onclick="showQuickLotteryModal()">一键抽签</button>
                         <button type="button" class="btn btn-outline" onclick="showLotteryResultsModal()">查看抽签结果</button>
                     </div>
                 </div>
-                <div id="allocationsTable">
-                    <!-- 分配表格将通过JavaScript加载 -->
+                
+                <!-- 选项卡切换 -->
+                <div style="margin-bottom: 16px;">
+                    <button type="button" class="btn btn-primary" id="roomTypeTabBtn" onclick="showAllocationTab('roomType')">寝室类型分配</button>
+                    <button type="button" class="btn btn-outline" id="specificRoomTabBtn" onclick="showAllocationTab('specificRoom')">具体宿舍分配</button>
                 </div>
-                <div id="allocationsPagination" style="margin-top: 16px;">
-                    <!-- 分页将通过JavaScript加载 -->
+                
+                <!-- 寝室类型分配选项卡 -->
+                <div id="roomTypeAllocationsTab">
+                    <div id="roomTypeAllocationsTable">
+                        <!-- 寝室类型分配表格将通过JavaScript加载 -->
+                    </div>
+                    <div id="roomTypeAllocationsPagination" style="margin-top: 16px;">
+                        <!-- 分页将通过JavaScript加载 -->
+                    </div>
+                </div>
+                
+                <!-- 具体宿舍分配选项卡 -->
+                <div id="specificRoomAllocationsTab" style="display: none;">
+                    <div id="allocationsTable">
+                        <!-- 分配表格将通过JavaScript加载 -->
+                    </div>
+                    <div id="allocationsPagination" style="margin-top: 16px;">
+                        <!-- 分页将通过JavaScript加载 -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -208,6 +233,52 @@
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="hideCreateRoomModal()">取消</button>
             <button type="button" class="btn btn-primary" onclick="createRoom()">创建</button>
+        </div>
+    </div>
+</div>
+
+<!-- 寝室类型分配模态框 -->
+<div id="roomTypeAllocationModal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3 class="modal-title">分配寝室类型</h3>
+        </div>
+        <div class="modal-content">
+            <div style="display: flex; gap: 24px;">
+                <!-- 左侧：未分配寝室类型用户列表 -->
+                <div style="flex: 1;">
+                    <h4>未分配寝室类型用户</h4>
+                    <div style="margin-bottom: 16px;">
+                        <input type="text" id="unallocatedRoomTypeUserSearch" class="form-input" placeholder="搜索用户..." style="width: 100%;" oninput="loadUnallocatedRoomTypeUsers()">
+                    </div>
+                    <div id="unallocatedRoomTypeUsersTable" style="max-height: 300px; overflow-y: auto;">
+                        <!-- 未分配寝室类型用户表格 -->
+                    </div>
+                </div>
+                
+                <!-- 右侧：寝室类型选择 -->
+                <div style="flex: 1;">
+                    <h4>选择寝室类型</h4>
+                    <div id="selectedRoomTypeUserInfo" style="margin-bottom: 16px; padding: 12px; background-color: #f5f5f5; border-radius: 4px; display: none;">
+                        <strong>已选择用户：</strong><span id="selectedRoomTypeUserName"></span>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <select id="roomTypeSelect" class="form-input" style="width: 100%;">
+                            <option value="">请选择寝室类型</option>
+                            <option value="4">4人间</option>
+                            <option value="8">8人间</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">备注</label>
+                        <textarea id="roomTypeNotes" class="form-input" rows="3" placeholder="可选的备注信息"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideRoomTypeAllocationModal()">取消</button>
+            <button type="button" class="btn btn-primary" id="confirmRoomTypeAllocationBtn" onclick="confirmRoomTypeAllocation()" disabled>确认分配</button>
         </div>
     </div>
 </div>
@@ -332,11 +403,15 @@
 let currentTab = 'users';
 let currentUsersPage = 1;
 let currentAllocationsPage = 1;
+let currentRoomTypeAllocationsPage = 1;
 let buildings = [];
 let currentLotteryId = null;
 let selectedUserId = null;
 let selectedUserName = '';
 let selectedBedId = null;
+let selectedRoomTypeUserId = null;
+let selectedRoomTypeUserName = '';
+let currentAllocationTab = 'roomType';
 
 document.addEventListener('DOMContentLoaded', function() {
     if (!requireAdmin()) return;
@@ -549,6 +624,7 @@ async function loadBuildings() {
                         <th>建筑名称</th>
                         <th>描述</th>
                         <th>创建时间</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -557,6 +633,9 @@ async function loadBuildings() {
                             <td>${building.name}</td>
                             <td>${building.description || ''}</td>
                             <td>${formatDate(building.created_at)}</td>
+                            <td>
+                                <button class="btn btn-error btn-sm" onclick="deleteBuilding(${building.id})">删除</button>
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
