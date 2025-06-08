@@ -131,13 +131,31 @@ class API {
         const formData = new FormData();
         formData.append('file', file);
         
-        return this.request('/api/admin/users/import', {
+        const config = {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${this.token}`
+                // 不设置 Content-Type，让浏览器自动设置 multipart/form-data
             },
             body: formData
-        });
+        };
+
+        try {
+            const response = await fetch(this.baseURL + '/api/admin/users/import', config);
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || '请求失败');
+            }
+
+            return data;
+        } catch (error) {
+            if (error.message.includes('401') || error.message.includes('token')) {
+                this.logout();
+                window.location.href = '/login';
+            }
+            throw error;
+        }
     }
 
     async getBuildings() {
