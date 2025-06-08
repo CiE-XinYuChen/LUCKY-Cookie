@@ -102,7 +102,8 @@
                         <h4>宿舍分配管理</h4>
                     </div>
                     <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn btn-primary" onclick="showQuickLotteryModal()">一键抽签</button>
+                        <button type="button" class="btn btn-primary" onclick="showManualAllocationModal()">手动分配</button>
+                        <button type="button" class="btn btn-outline" onclick="showQuickLotteryModal()">一键抽签</button>
                         <button type="button" class="btn btn-outline" onclick="showLotteryResultsModal()">查看抽签结果</button>
                     </div>
                 </div>
@@ -211,6 +212,52 @@
     </div>
 </div>
 
+<!-- 手动分配模态框 -->
+<div id="manualAllocationModal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 900px;">
+        <div class="modal-header">
+            <h3 class="modal-title">手动分配宿舍</h3>
+        </div>
+        <div class="modal-content">
+            <div style="display: flex; gap: 24px;">
+                <!-- 左侧：未分配用户列表 -->
+                <div style="flex: 1;">
+                    <h4>未分配用户</h4>
+                    <div style="margin-bottom: 16px;">
+                        <input type="text" id="unallocatedUserSearch" class="form-input" placeholder="搜索用户..." style="width: 100%;" oninput="loadUnallocatedUsers()">
+                    </div>
+                    <div id="unallocatedUsersTable" style="max-height: 300px; overflow-y: auto;">
+                        <!-- 未分配用户表格 -->
+                    </div>
+                </div>
+                
+                <!-- 右侧：房间床位选择 -->
+                <div style="flex: 1;">
+                    <h4>选择房间和床位</h4>
+                    <div id="selectedUserInfo" style="margin-bottom: 16px; padding: 12px; background-color: #f5f5f5; border-radius: 4px; display: none;">
+                        <strong>已选择用户：</strong><span id="selectedUserName"></span>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <select id="allocationBuildingSelect" class="form-input" style="width: 100%; margin-bottom: 8px;" onchange="loadRoomsForAllocation()">
+                            <option value="">请选择建筑</option>
+                        </select>
+                        <select id="allocationRoomSelect" class="form-input" style="width: 100%;" onchange="loadBedsForAllocation()">
+                            <option value="">请选择房间</option>
+                        </select>
+                    </div>
+                    <div id="bedsTable" style="max-height: 200px; overflow-y: auto;">
+                        <!-- 床位表格 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideManualAllocationModal()">取消</button>
+            <button type="button" class="btn btn-primary" id="confirmAllocationBtn" onclick="confirmManualAllocation()" disabled>确认分配</button>
+        </div>
+    </div>
+</div>
+
 <!-- 一键抽签模态框 -->
 <div id="quickLotteryModal" class="modal-overlay" style="display: none;">
     <div class="modal">
@@ -287,6 +334,9 @@ let currentUsersPage = 1;
 let currentAllocationsPage = 1;
 let buildings = [];
 let currentLotteryId = null;
+let selectedUserId = null;
+let selectedUserName = '';
+let selectedBedId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     if (!requireAdmin()) return;
@@ -727,6 +777,219 @@ function updateAllocationsPagination(currentPage, totalPages) {
 function changeAllocationsPage(page) {
     currentAllocationsPage = page;
     loadAllocations();
+}
+
+// 手动分配相关函数
+function showManualAllocationModal() {
+    document.getElementById('manualAllocationModal').style.display = 'flex';
+    loadUnallocatedUsers();
+    loadBuildingsForAllocation();
+    resetAllocationSelection();
+}
+
+function hideManualAllocationModal() {
+    document.getElementById('manualAllocationModal').style.display = 'none';
+    resetAllocationSelection();
+}
+
+function resetAllocationSelection() {
+    selectedUserId = null;
+    selectedUserName = '';
+    selectedBedId = null;
+    document.getElementById('selectedUserInfo').style.display = 'none';
+    document.getElementById('allocationBuildingSelect').value = '';
+    document.getElementById('allocationRoomSelect').innerHTML = '<option value="">请选择房间</option>';
+    document.getElementById('bedsTable').innerHTML = '';
+    document.getElementById('confirmAllocationBtn').disabled = true;
+    document.getElementById('unallocatedUserSearch').value = '';
+}
+
+async function loadUnallocatedUsers() {
+    const search = document.getElementById('unallocatedUserSearch').value;
+    
+    try {
+        const response = await api.getUnallocatedUsers(1, 50, search);
+        
+        if (!response.users || response.users.length === 0) {
+            document.getElementById('unallocatedUsersTable').innerHTML = '<p>暂无未分配用户</p>';
+            return;
+        }
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>姓名</th>
+                        <th>用户名</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${response.users.map(user => `
+                        <tr ${selectedUserId === user.id ? 'style="background-color: #e3f2fd;"' : ''}>
+                            <td>${user.name}</td>
+                            <td>${user.username}</td>
+                            <td>
+                                <button class="btn btn-outline btn-sm" onclick="selectUserForAllocation(${user.id}, '${user.name}')">
+                                    ${selectedUserId === user.id ? '已选择' : '选择'}
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('unallocatedUsersTable').innerHTML = table;
+    } catch (error) {
+        showAlert(error.message, 'error');
+        document.getElementById('unallocatedUsersTable').innerHTML = '<p>加载失败</p>';
+    }
+}
+
+function selectUserForAllocation(userId, userName) {
+    selectedUserId = userId;
+    selectedUserName = userName;
+    document.getElementById('selectedUserName').textContent = userName;
+    document.getElementById('selectedUserInfo').style.display = 'block';
+    loadUnallocatedUsers(); // 重新加载以更新选择状态
+    updateConfirmButton();
+}
+
+async function loadBuildingsForAllocation() {
+    try {
+        const response = await api.getBuildings();
+        const select = document.getElementById('allocationBuildingSelect');
+        
+        const options = response.buildings.map(building => 
+            `<option value="${building.id}">${building.name}</option>`
+        ).join('');
+        
+        select.innerHTML = '<option value="">请选择建筑</option>' + options;
+    } catch (error) {
+        console.error('加载建筑列表失败:', error);
+    }
+}
+
+async function loadRoomsForAllocation() {
+    const buildingId = document.getElementById('allocationBuildingSelect').value;
+    const roomSelect = document.getElementById('allocationRoomSelect');
+    
+    if (!buildingId) {
+        roomSelect.innerHTML = '<option value="">请选择房间</option>';
+        document.getElementById('bedsTable').innerHTML = '';
+        return;
+    }
+    
+    try {
+        const response = await api.getRooms(buildingId);
+        
+        const availableRooms = response.rooms.filter(room => room.available_beds > 0);
+        
+        const options = availableRooms.map(room => 
+            `<option value="${room.id}">${room.room_number} (${room.room_type}人间, 剩余${room.available_beds}个床位)</option>`
+        ).join('');
+        
+        roomSelect.innerHTML = '<option value="">请选择房间</option>' + options;
+        document.getElementById('bedsTable').innerHTML = '';
+    } catch (error) {
+        console.error('加载房间列表失败:', error);
+    }
+}
+
+async function loadBedsForAllocation() {
+    const roomId = document.getElementById('allocationRoomSelect').value;
+    
+    if (!roomId) {
+        document.getElementById('bedsTable').innerHTML = '';
+        return;
+    }
+    
+    try {
+        const response = await api.getRooms();
+        const room = response.rooms.find(r => r.id === parseInt(roomId));
+        
+        if (!room || !room.beds) {
+            document.getElementById('bedsTable').innerHTML = '<p>暂无床位信息</p>';
+            return;
+        }
+        
+        const availableBeds = room.beds.filter(bed => !bed.is_occupied);
+        
+        if (availableBeds.length === 0) {
+            document.getElementById('bedsTable').innerHTML = '<p>该房间暂无可用床位</p>';
+            return;
+        }
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>床位号</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${availableBeds.map(bed => `
+                        <tr ${selectedBedId === bed.id ? 'style="background-color: #e8f5e8;"' : ''}>
+                            <td>${bed.bed_number}</td>
+                            <td>可用</td>
+                            <td>
+                                <button class="btn btn-outline btn-sm" onclick="selectBedForAllocation(${bed.id})">
+                                    ${selectedBedId === bed.id ? '已选择' : '选择'}
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('bedsTable').innerHTML = table;
+    } catch (error) {
+        console.error('加载床位列表失败:', error);
+        document.getElementById('bedsTable').innerHTML = '<p>加载失败</p>';
+    }
+}
+
+function selectBedForAllocation(bedId) {
+    selectedBedId = bedId;
+    loadBedsForAllocation(); // 重新加载以更新选择状态
+    updateConfirmButton();
+}
+
+function updateConfirmButton() {
+    const confirmBtn = document.getElementById('confirmAllocationBtn');
+    confirmBtn.disabled = !(selectedUserId && selectedBedId);
+}
+
+async function confirmManualAllocation() {
+    if (!selectedUserId || !selectedBedId) {
+        showAlert('请选择用户和床位', 'error');
+        return;
+    }
+    
+    const roomId = document.getElementById('allocationRoomSelect').value;
+    
+    if (!roomId) {
+        showAlert('请选择房间', 'error');
+        return;
+    }
+    
+    try {
+        const response = await api.createAllocation({
+            user_id: selectedUserId,
+            room_id: parseInt(roomId),
+            bed_id: selectedBedId
+        });
+        
+        showAlert(response.message, 'success');
+        hideManualAllocationModal();
+        loadAllocations(); // 重新加载分配列表
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
 }
 
 // 模态框事件处理

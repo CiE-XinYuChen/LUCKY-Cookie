@@ -285,6 +285,121 @@ def get_allocations():
         'current_page': page
     }), 200
 
+@admin_bp.route('/allocations', methods=['POST'])
+@admin_required
+def create_allocation():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    required_fields = ['user_id', 'room_id', 'bed_id']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': '缺少必要字段'}), 400
+    
+    user_id = data.get('user_id')
+    room_id = data.get('room_id')
+    bed_id = data.get('bed_id')
+    
+    # 验证用户存在且不是管理员
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': '用户不存在'}), 404
+    
+    if user.is_admin:
+        return jsonify({'error': '不能为管理员分配宿舍'}), 400
+    
+    # 验证房间和床位存在
+    room = Room.query.get(room_id)
+    bed = Bed.query.get(bed_id)
+    
+    if not room or not bed:
+        return jsonify({'error': '房间或床位不存在'}), 404
+    
+    if bed.room_id != room.id:
+        return jsonify({'error': '床位不属于指定房间'}), 400
+    
+    # 检查用户是否已有分配
+    existing_allocation = RoomSelection.query.filter_by(user_id=user_id).first()
+    if existing_allocation:
+        return jsonify({'error': '用户已有宿舍分配'}), 409
+    
+    # 检查床位是否被占用
+    if bed.is_occupied:
+        return jsonify({'error': '床位已被占用'}), 409
+    
+    current_user_id = get_jwt_identity()
+    
+    try:
+        # 创建分配记录
+        allocation = RoomSelection(
+            user_id=user_id,
+            room_id=room_id,
+            bed_id=bed_id,
+            is_confirmed=True  # 管理员分配默认确认
+        )
+        
+        # 标记床位为占用
+        bed.is_occupied = True
+        
+        # 更新房间入住数量
+        room.current_occupancy += 1
+        
+        # 记录分配历史
+        history = AllocationHistory(
+            user_id=user_id,
+            room_id=room_id,
+            bed_id=bed_id,
+            action='assigned',
+            operated_by=current_user_id,
+            notes='管理员手动分配'
+        )
+        
+        db.session.add(allocation)
+        db.session.add(history)
+        db.session.commit()
+        
+        return jsonify({
+            'message': '宿舍分配成功',
+            'allocation': allocation.to_dict()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '分配失败'}), 500
+
+@admin_bp.route('/unallocated-users', methods=['GET'])
+@admin_required
+def get_unallocated_users():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '')
+    
+    # 获取已分配宿舍的用户ID
+    allocated_user_ids = db.session.query(RoomSelection.user_id).subquery()
+    
+    # 查询未分配宿舍的非管理员用户
+    query = User.query.filter(
+        User.is_admin == False,
+        ~User.id.in_(allocated_user_ids)
+    )
+    
+    if search:
+        query = query.filter(
+            db.or_(
+                User.username.ilike(f'%{search}%'),
+                User.name.ilike(f'%{search}%')
+            )
+        )
+    
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    users = pagination.items
+    
+    return jsonify({
+        'users': [user.to_dict() for user in users],
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    }), 200
+
 @admin_bp.route('/allocations/<int:allocation_id>', methods=['PUT'])
 @admin_required
 def update_allocation(allocation_id):

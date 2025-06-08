@@ -181,6 +181,14 @@ class API {
         return this.get('/api/admin/allocations', { page, per_page: perPage });
     }
 
+    async createAllocation(allocationData) {
+        return this.post('/api/admin/allocations', allocationData);
+    }
+
+    async getUnallocatedUsers(page = 1, perPage = 20, search = '') {
+        return this.get('/api/admin/unallocated-users', { page, per_page: perPage, search });
+    }
+
     async updateAllocation(allocationId, data) {
         return this.put(`/api/admin/allocations/${allocationId}`, data);
     }
