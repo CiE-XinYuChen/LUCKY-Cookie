@@ -449,7 +449,7 @@ function showTab(tabName) {
             loadRooms();
             break;
         case 'allocations':
-            loadAllocations();
+            loadRoomTypeAllocations();
             break;
     }
 }
@@ -676,6 +676,18 @@ async function createBuilding() {
     }
 }
 
+async function deleteBuilding(buildingId) {
+    if (!confirm('确定要删除此建筑吗？删除前请确保该建筑下没有房间。')) return;
+    
+    try {
+        await api.deleteBuilding(buildingId);
+        showAlert('建筑删除成功', 'success');
+        loadBuildings();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
 // 房间管理相关函数
 async function loadBuildingsForFilter() {
     try {
@@ -773,7 +785,122 @@ async function createRoom() {
     }
 }
 
+async function importRooms() {
+    const fileInput = document.getElementById('roomImportFile');
+    const file = fileInput.files[0];
+    
+    if (!file) return;
+    
+    try {
+        const response = await api.importRooms(file);
+        showAlert(`房间导入完成：新增 ${response.created_count} 个房间，跳过 ${response.skipped_count} 个房间`, 'success');
+        
+        if (response.errors.length > 0) {
+            showAlert(`错误信息：${response.errors.join('; ')}`, 'warning');
+        }
+        
+        loadRooms();
+        fileInput.value = '';
+    } catch (error) {
+        showAlert(error.message, 'error');
+        fileInput.value = '';
+    }
+}
+
 // 分配管理相关函数
+function showAllocationTab(tabName) {
+    // 更新按钮状态
+    document.getElementById('roomTypeTabBtn').className = 'btn btn-outline';
+    document.getElementById('specificRoomTabBtn').className = 'btn btn-outline';
+    
+    // 隐藏所有选项卡
+    document.getElementById('roomTypeAllocationsTab').style.display = 'none';
+    document.getElementById('specificRoomAllocationsTab').style.display = 'none';
+    
+    // 显示选中的选项卡
+    if (tabName === 'roomType') {
+        document.getElementById('roomTypeTabBtn').className = 'btn btn-primary';
+        document.getElementById('roomTypeAllocationsTab').style.display = 'block';
+        loadRoomTypeAllocations();
+    } else {
+        document.getElementById('specificRoomTabBtn').className = 'btn btn-primary';
+        document.getElementById('specificRoomAllocationsTab').style.display = 'block';
+        loadAllocations();
+    }
+    
+    currentAllocationTab = tabName;
+}
+
+async function loadRoomTypeAllocations() {
+    try {
+        const response = await api.getRoomTypeAllocations(currentRoomTypeAllocationsPage, 20);
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>学生姓名</th>
+                        <th>用户名</th>
+                        <th>寝室类型</th>
+                        <th>分配时间</th>
+                        <th>分配人员</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${response.allocations.map(allocation => `
+                        <tr>
+                            <td>${allocation.user_name}</td>
+                            <td>${allocation.user_username}</td>
+                            <td>${allocation.room_type}人间</td>
+                            <td>${formatDate(allocation.allocated_at)}</td>
+                            <td>${allocation.allocator_name || '系统'}</td>
+                            <td>
+                                <button class="btn btn-outline btn-sm" style="margin-right: 8px;" onclick="editRoomTypeAllocation(${allocation.id}, '${allocation.room_type}', '${allocation.notes || ''}')">编辑</button>
+                                <button class="btn btn-error btn-sm" onclick="deleteRoomTypeAllocation(${allocation.id})">删除</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        document.getElementById('roomTypeAllocationsTable').innerHTML = table;
+        
+        // 更新分页
+        updateRoomTypeAllocationsPagination(response.current_page, response.pages);
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function updateRoomTypeAllocationsPagination(currentPage, totalPages) {
+    let paginationHtml = '';
+    
+    if (totalPages > 1) {
+        paginationHtml = '<div style="display: flex; gap: 8px; justify-content: center;">';
+        
+        if (currentPage > 1) {
+            paginationHtml += `<button class="btn btn-outline" onclick="changeRoomTypeAllocationsPage(${currentPage - 1})">上一页</button>`;
+        }
+        
+        paginationHtml += `<span style="padding: 12px;">第 ${currentPage} 页，共 ${totalPages} 页</span>`;
+        
+        if (currentPage < totalPages) {
+            paginationHtml += `<button class="btn btn-outline" onclick="changeRoomTypeAllocationsPage(${currentPage + 1})">下一页</button>`;
+        }
+        
+        paginationHtml += '</div>';
+    }
+    
+    document.getElementById('roomTypeAllocationsPagination').innerHTML = paginationHtml;
+}
+
+function changeRoomTypeAllocationsPage(page) {
+    currentRoomTypeAllocationsPage = page;
+    loadRoomTypeAllocations();
+}
+
 async function loadAllocations() {
     try {
         const response = await api.getAllocations(currentAllocationsPage, 20);
