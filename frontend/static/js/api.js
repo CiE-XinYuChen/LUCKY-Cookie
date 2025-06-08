@@ -175,6 +175,25 @@ class API {
         return this.get('/api/admin/allocation-history', { page, per_page: perPage });
     }
 
+    // 抽签管理 API
+    async quickLotteryDraw(lotteryData) {
+        return this.post('/api/admin/lottery/quick-draw', lotteryData);
+    }
+
+    async publishLotteryResults(lotteryId) {
+        return this.post(`/api/admin/lottery/${lotteryId}/publish`);
+    }
+
+    async deleteLotteryResults(lotteryId) {
+        return this.delete(`/api/admin/lottery/${lotteryId}`);
+    }
+
+    async getAllLotteryResults(page = 1, perPage = 20, lotteryId = null) {
+        const params = { page, per_page: perPage };
+        if (lotteryId) params.lottery_id = lotteryId;
+        return this.get('/api/admin/lottery/results', params);
+    }
+
     // 抽签 API
     async getLotterySettings() {
         return this.get('/api/lottery/settings');

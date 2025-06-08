@@ -390,3 +390,143 @@ def get_allocation_history():
         'pages': pagination.pages,
         'current_page': page
     }), 200
+
+@admin_bp.route('/lottery/quick-draw', methods=['POST'])
+@admin_required
+def quick_lottery_draw():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    required_fields = ['lottery_name', 'room_type']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': '缺少必要字段'}), 400
+    
+    if data['room_type'] not in ['4', '8']:
+        return jsonify({'error': '房间类型只能是4或8'}), 400
+    
+    try:
+        # 检查是否有可参与抽签的用户
+        users = User.query.filter_by(is_admin=False).all()
+        if not users:
+            return jsonify({'error': '没有可参与抽签的用户'}), 400
+        
+        # 创建抽签设置
+        setting = LotterySetting(
+            lottery_name=data['lottery_name'],
+            lottery_time=datetime.utcnow(),
+            room_type=data['room_type'],
+            is_published=False  # 默认不发布，等待管理员确认
+        )
+        
+        db.session.add(setting)
+        db.session.flush()  # 获取setting的id
+        
+        # 生成抽签结果
+        user_ids = [user.id for user in users]
+        import random
+        random.shuffle(user_ids)
+        
+        lottery_results = []
+        group_size = 4 if setting.room_type == '4' else 8
+        
+        for i, user_id in enumerate(user_ids):
+            result = LotteryResult(
+                user_id=user_id,
+                lottery_id=setting.id,
+                lottery_number=i + 1,
+                group_number=(i // group_size) + 1
+            )
+            lottery_results.append(result)
+        
+        db.session.add_all(lottery_results)
+        db.session.commit()
+        
+        return jsonify({
+            'message': '抽签结果生成成功',
+            'lottery_id': setting.id,
+            'lottery_name': setting.lottery_name,
+            'total_participants': len(users),
+            'total_groups': (len(users) - 1) // group_size + 1,
+            'results': [result.to_dict() for result in lottery_results]
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'抽签失败: {str(e)}'}), 500
+
+@admin_bp.route('/lottery/<int:lottery_id>/publish', methods=['POST'])
+@admin_required
+def publish_lottery_results(lottery_id):
+    setting = LotterySetting.query.get(lottery_id)
+    if not setting:
+        return jsonify({'error': '抽签不存在'}), 404
+    
+    if setting.is_published:
+        return jsonify({'error': '抽签结果已经发布'}), 400
+    
+    try:
+        setting.is_published = True
+        db.session.commit()
+        
+        return jsonify({
+            'message': '抽签结果发布成功',
+            'lottery_id': lottery_id
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '发布失败'}), 500
+
+@admin_bp.route('/lottery/<int:lottery_id>', methods=['DELETE'])
+@admin_required
+def delete_lottery_results(lottery_id):
+    setting = LotterySetting.query.get(lottery_id)
+    if not setting:
+        return jsonify({'error': '抽签不存在'}), 404
+    
+    if setting.is_published:
+        return jsonify({'error': '已发布的抽签结果不能删除'}), 400
+    
+    try:
+        # 删除抽签结果
+        LotteryResult.query.filter_by(lottery_id=lottery_id).delete()
+        # 删除抽签设置
+        db.session.delete(setting)
+        db.session.commit()
+        
+        return jsonify({
+            'message': '抽签结果删除成功'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '删除失败'}), 500
+
+@admin_bp.route('/lottery/results', methods=['GET'])
+@admin_required
+def get_all_lottery_results():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    lottery_id = request.args.get('lottery_id', type=int)
+    
+    query = LotteryResult.query
+    if lottery_id:
+        query = query.filter_by(lottery_id=lottery_id)
+    
+    pagination = query.order_by(LotteryResult.lottery_number).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    results = pagination.items
+    
+    # 获取抽签设置信息
+    settings = {}
+    if results:
+        setting_ids = list(set(result.lottery_id for result in results))
+        lottery_settings = LotterySetting.query.filter(LotterySetting.id.in_(setting_ids)).all()
+        settings = {setting.id: setting.to_dict() for setting in lottery_settings}
+    
+    return jsonify({
+        'results': [result.to_dict() for result in results],
+        'settings': settings,
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    }), 200

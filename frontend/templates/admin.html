@@ -97,6 +97,15 @@
                 <h3 class="card-title">宿舍分配管理</h3>
             </div>
             <div class="card-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 16px;">
+                    <div>
+                        <h4>宿舍分配管理</h4>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-primary" onclick="showQuickLotteryModal()">一键抽签</button>
+                        <button type="button" class="btn btn-outline" onclick="showLotteryResultsModal()">查看抽签结果</button>
+                    </div>
+                </div>
                 <div id="allocationsTable">
                     <!-- 分配表格将通过JavaScript加载 -->
                 </div>
@@ -201,6 +210,74 @@
         </div>
     </div>
 </div>
+
+<!-- 一键抽签模态框 -->
+<div id="quickLotteryModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">一键抽签</h3>
+        </div>
+        <div class="modal-content">
+            <form id="quickLotteryForm">
+                <div class="form-group">
+                    <label class="form-label">抽签名称</label>
+                    <input type="text" id="lotteryName" class="form-input" required placeholder="例如：2024年春季宿舍抽签">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">房间类型</label>
+                    <select id="lotteryRoomType" class="form-input" required>
+                        <option value="">请选择房间类型</option>
+                        <option value="4">4人间</option>
+                        <option value="8">8人间</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <p class="form-text">系统将自动为所有非管理员用户生成抽签号码，抽签结果默认保存为草稿状态，您可以选择发布或删除。</p>
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideQuickLotteryModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="performQuickLottery()">开始抽签</button>
+        </div>
+    </div>
+</div>
+
+<!-- 抽签结果查看模态框 -->
+<div id="lotteryResultsModal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3 class="modal-title">抽签结果管理</h3>
+        </div>
+        <div class="modal-content">
+            <div id="lotteryResultsContent">
+                <!-- 抽签结果内容将通过JavaScript加载 -->
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideLotteryResultsModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 抽签结果确认模态框 -->
+<div id="lotteryConfirmModal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 class="modal-title">抽签完成</h3>
+        </div>
+        <div class="modal-content">
+            <div id="lotteryConfirmContent">
+                <!-- 抽签确认内容将通过JavaScript加载 -->
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideLotteryConfirmModal()">关闭</button>
+            <button type="button" class="btn btn-success" id="publishLotteryBtn" onclick="publishCurrentLottery()">发布结果</button>
+            <button type="button" class="btn btn-error" id="deleteLotteryBtn" onclick="deleteCurrentLottery()">删除重抽</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -209,6 +286,7 @@ let currentTab = 'users';
 let currentUsersPage = 1;
 let currentAllocationsPage = 1;
 let buildings = [];
+let currentLotteryId = null;
 
 document.addEventListener('DOMContentLoaded', function() {
     if (!requireAdmin()) return;
@@ -671,5 +749,211 @@ document.getElementById('roomType').addEventListener('change', function() {
         maxCapacityInput.value = '8';
     }
 });
+
+// 抽签管理相关函数
+function showQuickLotteryModal() {
+    document.getElementById('quickLotteryModal').style.display = 'flex';
+}
+
+function hideQuickLotteryModal() {
+    document.getElementById('quickLotteryModal').style.display = 'none';
+    document.getElementById('quickLotteryForm').reset();
+}
+
+async function performQuickLottery() {
+    const lotteryName = document.getElementById('lotteryName').value.trim();
+    const roomType = document.getElementById('lotteryRoomType').value;
+    
+    if (!lotteryName || !roomType) {
+        showAlert('请填写所有必填字段', 'error');
+        return;
+    }
+    
+    const button = event.target;
+    const hideLoading = showLoading(button);
+    
+    try {
+        const response = await api.quickLotteryDraw({
+            lottery_name: lotteryName,
+            room_type: roomType
+        });
+        
+        hideQuickLotteryModal();
+        showAlert(response.message, 'success');
+        
+        // 显示抽签结果确认对话框
+        currentLotteryId = response.lottery_id;
+        showLotteryConfirmDialog(response);
+        
+    } catch (error) {
+        showAlert(error.message, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function showLotteryConfirmDialog(lotteryData) {
+    const content = `
+        <div style="margin-bottom: 16px;">
+            <p><strong>抽签名称：</strong>${lotteryData.lottery_name}</p>
+            <p><strong>房间类型：</strong>${lotteryData.room_type || lotteryData.total_groups ? '根据分组判断' : ''}人间</p>
+            <p><strong>参与人数：</strong>${lotteryData.total_participants}人</p>
+            <p><strong>分组数量：</strong>${lotteryData.total_groups}组</p>
+        </div>
+        <div class="alert alert-warning">
+            <p>抽签已完成并保存为草稿状态。请选择：</p>
+            <ul>
+                <li><strong>发布结果：</strong>学生将可以看到抽签结果</li>
+                <li><strong>删除重抽：</strong>删除此次抽签结果，重新进行抽签</li>
+            </ul>
+        </div>
+    `;
+    
+    document.getElementById('lotteryConfirmContent').innerHTML = content;
+    document.getElementById('lotteryConfirmModal').style.display = 'flex';
+}
+
+function hideLotteryConfirmModal() {
+    document.getElementById('lotteryConfirmModal').style.display = 'none';
+    currentLotteryId = null;
+}
+
+async function publishCurrentLottery() {
+    if (!currentLotteryId) {
+        showAlert('没有待发布的抽签结果', 'error');
+        return;
+    }
+    
+    try {
+        const response = await api.publishLotteryResults(currentLotteryId);
+        showAlert(response.message, 'success');
+        hideLotteryConfirmModal();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function deleteCurrentLottery() {
+    if (!currentLotteryId) {
+        showAlert('没有待删除的抽签结果', 'error');
+        return;
+    }
+    
+    if (!confirm('确定要删除此次抽签结果吗？删除后无法恢复。')) {
+        return;
+    }
+    
+    try {
+        const response = await api.deleteLotteryResults(currentLotteryId);
+        showAlert(response.message, 'success');
+        hideLotteryConfirmModal();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function showLotteryResultsModal() {
+    document.getElementById('lotteryResultsModal').style.display = 'flex';
+    loadLotteryResults();
+}
+
+function hideLotteryResultsModal() {
+    document.getElementById('lotteryResultsModal').style.display = 'none';
+}
+
+async function loadLotteryResults() {
+    try {
+        const response = await api.getAllLotteryResults(1, 50); // 显示更多结果
+        
+        if (!response.results || response.results.length === 0) {
+            document.getElementById('lotteryResultsContent').innerHTML = '<p>暂无抽签结果</p>';
+            return;
+        }
+        
+        // 按抽签ID分组显示结果
+        const groupedResults = {};
+        response.results.forEach(result => {
+            if (!groupedResults[result.lottery_id]) {
+                groupedResults[result.lottery_id] = [];
+            }
+            groupedResults[result.lottery_id].push(result);
+        });
+        
+        let html = '';
+        Object.keys(groupedResults).forEach(lotteryId => {
+            const results = groupedResults[lotteryId];
+            const setting = response.settings[lotteryId];
+            
+            html += `
+                <div class="card" style="margin-bottom: 16px;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h4>${setting ? setting.lottery_name : '未知抽签'}</h4>
+                            <small>创建时间: ${setting ? formatDate(setting.created_at) : ''} | 
+                                   状态: ${setting && setting.is_published ? '已发布' : '草稿'}</small>
+                        </div>
+                        <div>
+                            ${setting && !setting.is_published ? `
+                                <button class="btn btn-success" style="margin-right: 8px;" onclick="publishLottery(${lotteryId})">发布</button>
+                                <button class="btn btn-error" onclick="deleteLottery(${lotteryId})">删除</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div style="max-height: 200px; overflow-y: auto;">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>抽签号</th>
+                                        <th>姓名</th>
+                                        <th>分组</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${results.map(result => `
+                                        <tr>
+                                            <td>${result.lottery_number}</td>
+                                            <td>${result.user_name}</td>
+                                            <td>第${result.group_number}组</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        document.getElementById('lotteryResultsContent').innerHTML = html;
+    } catch (error) {
+        showAlert(error.message, 'error');
+        document.getElementById('lotteryResultsContent').innerHTML = '<p>加载失败</p>';
+    }
+}
+
+async function publishLottery(lotteryId) {
+    try {
+        const response = await api.publishLotteryResults(lotteryId);
+        showAlert(response.message, 'success');
+        loadLotteryResults(); // 重新加载结果
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function deleteLottery(lotteryId) {
+    if (!confirm('确定要删除此抽签结果吗？删除后无法恢复。')) {
+        return;
+    }
+    
+    try {
+        const response = await api.deleteLotteryResults(lotteryId);
+        showAlert(response.message, 'success');
+        loadLotteryResults(); // 重新加载结果
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
 </script>
 {% endblock %}
