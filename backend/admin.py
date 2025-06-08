@@ -77,6 +77,44 @@ def reset_user_password(user_id):
         db.session.rollback()
         return jsonify({'error': '密码重置失败'}), 500
 
+@admin_bp.route('/users', methods=['POST'])
+@admin_required
+def create_user():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    required_fields = ['username', 'password', 'name']
+    if not all(field in data for field in required_fields):
+        return jsonify({'error': '用户名、密码和姓名不能为空'}), 400
+    
+    username = data.get('username').strip()
+    password = data.get('password').strip()
+    name = data.get('name').strip()
+    
+    if not username or not password or not name:
+        return jsonify({'error': '用户名、密码和姓名不能为空'}), 400
+    
+    if len(password) < 6:
+        return jsonify({'error': '密码长度不能少于6位'}), 400
+    
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': '用户名已存在'}), 409
+    
+    try:
+        user = User(username=username, name=name)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        
+        return jsonify({
+            'message': '用户创建成功',
+            'user': user.to_dict()
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': '用户创建失败'}), 500
+
 @admin_bp.route('/users/import', methods=['POST'])
 @admin_required
 def import_users():

@@ -115,6 +115,10 @@ class API {
         return this.get('/api/admin/users', { page, per_page: perPage, search });
     }
 
+    async createUser(userData) {
+        return this.post('/api/admin/users', userData);
+    }
+
     async deleteUser(userId) {
         return this.delete(`/api/admin/users/${userId}`);
     }

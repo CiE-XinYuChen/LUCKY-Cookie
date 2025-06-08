@@ -31,6 +31,7 @@
                         <button type="button" class="btn btn-outline" onclick="loadUsers()">搜索</button>
                     </div>
                     <div style="display: flex; gap: 8px;">
+                        <button type="button" class="btn btn-primary" onclick="showCreateUserModal()">新建用户</button>
                         <label for="userImportFile" class="btn btn-outline">
                             导入用户CSV
                             <input type="file" id="userImportFile" accept=".csv" style="display: none;" onchange="importUsers()">
@@ -128,6 +129,36 @@
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="hideCreateBuildingModal()">取消</button>
             <button type="button" class="btn btn-primary" onclick="createBuilding()">创建</button>
+        </div>
+    </div>
+</div>
+
+<!-- 新建用户模态框 -->
+<div id="createUserModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">新建用户</h3>
+        </div>
+        <div class="modal-content">
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label class="form-label">姓名</label>
+                    <input type="text" id="userName" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">用户名</label>
+                    <input type="text" id="userUsername" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input type="password" id="userPassword" class="form-input" required minlength="6">
+                    <small class="form-text">密码长度不能少于6位</small>
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideCreateUserModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="createUser()">创建</button>
         </div>
     </div>
 </div>
@@ -340,6 +371,41 @@ function updateUsersPagination(currentPage, totalPages) {
 function changePage(page) {
     currentUsersPage = page;
     loadUsers();
+}
+
+// 用户创建相关函数
+function showCreateUserModal() {
+    document.getElementById('createUserModal').style.display = 'flex';
+}
+
+function hideCreateUserModal() {
+    document.getElementById('createUserModal').style.display = 'none';
+    document.getElementById('createUserForm').reset();
+}
+
+async function createUser() {
+    const name = document.getElementById('userName').value.trim();
+    const username = document.getElementById('userUsername').value.trim();
+    const password = document.getElementById('userPassword').value;
+    
+    if (!name || !username || !password) {
+        showAlert('请填写所有必填字段', 'error');
+        return;
+    }
+    
+    if (password.length < 6) {
+        showAlert('密码长度不能少于6位', 'error');
+        return;
+    }
+    
+    try {
+        await api.createUser({ name, username, password });
+        showAlert('用户创建成功', 'success');
+        hideCreateUserModal();
+        loadUsers();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
 }
 
 // 建筑管理相关函数
