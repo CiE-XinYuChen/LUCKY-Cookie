@@ -129,13 +129,23 @@ async function loadLotteryResults() {
             <div class="card" style="margin-bottom: 16px;">
                 <div class="card-content">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                        <div><strong>抽签名称：</strong> ${result.lottery_name || '未知抽签'}</div>
                         <div><strong>抽签号码：</strong> ${result.lottery_number}</div>
                         <div><strong>分配房间类型：</strong> ${result.room_type ? `${result.room_type}人间` : '未分配'}</div>
                         <div><strong>抽签时间：</strong> ${formatDate(result.created_at)}</div>
+                        <div><strong>状态：</strong> 
+                            <span class="${result.is_published ? 'status-published' : 'status-draft'}">
+                                ${result.is_published ? '已发布' : '草稿状态'}
+                            </span>
+                        </div>
                     </div>
                     ${result.room_type ? `
-                        <div class="alert alert-info" style="margin-top: 16px;">
-                            <strong>注意：</strong>您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
+                        <div class="alert ${result.is_published ? 'alert-info' : 'alert-warning'}" style="margin-top: 16px;">
+                            ${result.is_published ? `
+                                <strong>注意：</strong>您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
+                            ` : `
+                                <strong>提示：</strong>您的抽签结果为${result.room_type}人间（草稿状态），管理员可能还会调整结果。正式发布后您才能选择具体床位。
+                            `}
                         </div>
                     ` : ''}
                 </div>
@@ -240,4 +250,22 @@ document.getElementById('changePasswordModal').addEventListener('click', functio
     }
 });
 </script>
+
+<style>
+.status-published {
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.status-draft {
+    color: var(--warning-color);
+    font-weight: 500;
+}
+
+.alert-warning {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+    color: #856404;
+}
+</style>
 {% endblock %}

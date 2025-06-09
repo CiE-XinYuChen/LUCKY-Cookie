@@ -26,7 +26,9 @@ def lottery_result_to_dict(result):
         'lottery_number': result['lottery_number'],
         'group_number': result['group_number'],
         'room_type': result['room_type'] if 'room_type' in result.keys() else None,
-        'created_at': result['created_at']
+        'created_at': result['created_at'],
+        'is_published': result['is_published'] if 'is_published' in result.keys() else None,
+        'lottery_name': result['lottery_name'] if 'lottery_name' in result.keys() else None
     }
 
 @lottery_bp.route('/settings', methods=['GET'])
@@ -218,22 +220,22 @@ def get_lottery_results():
                 ORDER BY lr.lottery_number
             ''')
     else:
-        # 学生只能查看已发布的抽签结果
+        # 学生可以查看自己的所有抽签结果（包括未发布的）
         if lottery_id:
             c.execute('''
-                SELECT lr.*, u.name as user_name
+                SELECT lr.*, u.name as user_name, ls.is_published, ls.lottery_name
                 FROM lottery_results lr
                 JOIN users u ON lr.user_id = u.id
                 JOIN lottery_settings ls ON lr.lottery_id = ls.id
-                WHERE lr.user_id = ? AND lr.lottery_id = ? AND ls.is_published = 1
+                WHERE lr.user_id = ? AND lr.lottery_id = ?
             ''', (current_user_id, lottery_id))
         else:
             c.execute('''
-                SELECT lr.*, u.name as user_name
+                SELECT lr.*, u.name as user_name, ls.is_published, ls.lottery_name
                 FROM lottery_results lr
                 JOIN users u ON lr.user_id = u.id
                 JOIN lottery_settings ls ON lr.lottery_id = ls.id
-                WHERE lr.user_id = ? AND ls.is_published = 1
+                WHERE lr.user_id = ?
                 ORDER BY lr.created_at DESC
             ''', (current_user_id,))
     
