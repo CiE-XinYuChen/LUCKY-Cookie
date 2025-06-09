@@ -587,6 +587,14 @@ async function importUsers() {
             showAlert(`错误信息：${response.errors.join('; ')}`, 'warning');
         }
         
+        // 切换到用户管理选项卡
+        showTab('users');
+        
+        // 重置搜索条件和页码，确保能看到新用户
+        document.getElementById('userSearch').value = '';
+        currentUsersPage = 1;
+        
+        // 重新加载用户列表
         loadUsers();
         fileInput.value = '';
     } catch (error) {
@@ -678,6 +686,11 @@ async function createUser() {
         await api.createUser({ name, username, password });
         showAlert('用户创建成功', 'success');
         hideCreateUserModal();
+        
+        // 切换到用户管理选项卡并重置搜索
+        showTab('users');
+        document.getElementById('userSearch').value = '';
+        currentUsersPage = 1;
         loadUsers();
     } catch (error) {
         showAlert(error.message, 'error');
@@ -915,6 +928,11 @@ async function createRoom() {
         });
         showAlert('房间创建成功', 'success');
         hideCreateRoomModal();
+        
+        // 切换到房间管理选项卡并重置筛选
+        showTab('rooms');
+        document.getElementById('buildingFilter').value = '';
+        document.getElementById('roomTypeFilter').value = '';
         loadRooms();
     } catch (error) {
         showAlert(error.message, 'error');
@@ -935,6 +953,14 @@ async function importRooms() {
             showAlert(`错误信息：${response.errors.join('; ')}`, 'warning');
         }
         
+        // 切换到房间管理选项卡
+        showTab('rooms');
+        
+        // 重置筛选条件，确保能看到新房间
+        document.getElementById('buildingFilter').value = '';
+        document.getElementById('roomTypeFilter').value = '';
+        
+        // 重新加载房间列表
         loadRooms();
         fileInput.value = '';
     } catch (error) {
