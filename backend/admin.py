@@ -315,7 +315,7 @@ def get_lottery_settings():
             'lotteries': [lottery_setting_to_dict(lottery) for lottery in lotteries]
         }), 200
     
-    return jsonify({'lotteries': []}, 200
+    return jsonify({'lotteries': []}), 200
 
 @admin_bp.route('/lottery/settings', methods=['POST'])
 @admin_required
