@@ -2103,7 +2103,7 @@ async function editCurrentLotteryResult(resultId, currentLotteryNumber, currentR
     const tempModal = document.createElement('div');
     tempModal.className = 'modal-overlay';
     tempModal.style.display = 'flex';
-    tempModal.style.zIndex = '1002'; // 确保在抽签确认模态框之上
+    tempModal.style.zIndex = '10001'; // 确保在抽签确认模态框之上
     tempModal.innerHTML = `
         <div class="modal" style="max-width: 400px;">
             <div class="modal-header">
@@ -2349,7 +2349,7 @@ async function editLotteryResultInModal(resultId, currentLotteryNumber, currentR
     const tempModal = document.createElement('div');
     tempModal.className = 'modal-overlay';
     tempModal.style.display = 'flex';
-    tempModal.style.zIndex = '1001';
+    tempModal.style.zIndex = '10000';
     tempModal.innerHTML = `
         <div class="modal" style="max-width: 400px;">
             <div class="modal-header">
