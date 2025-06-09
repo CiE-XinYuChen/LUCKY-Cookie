@@ -125,14 +125,16 @@
 
 {% block scripts %}
 <script>
-// 立即执行测试
-console.log('Dashboard script block loaded');
+// 立即执行测试 - 最基础的检查
+console.log('=== Dashboard script starting ===');
+alert('Script loaded!'); // 强制弹窗确认脚本执行
 
 // 立即更新页面状态，不等待DOM加载
 try {
     document.getElementById('jsStatus').textContent = '脚本已加载';
+    console.log('Successfully updated jsStatus');
 } catch (e) {
-    console.log('DOM not ready yet, waiting for DOMContentLoaded');
+    console.log('DOM not ready yet, error:', e);
 }
 
 let userData = null;
@@ -588,18 +590,18 @@ async function loadStatusOverview() {
         if (lotteryResponse.results && lotteryResponse.results.length > 0) {
             const result = lotteryResponse.results[0];
             if (result.room_type) {
-                lotteryStatus = \`已分配 \${result.room_type}人间\`;
+                lotteryStatus = `已分配 ${result.room_type}人间`;
                 lotteryColor = 'var(--success-color)';
-                lotteryIcon = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                lotteryIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>\`;
+                </svg>`;
             } else {
                 lotteryStatus = '已参与抽签';
                 lotteryColor = 'var(--warning-color)';
-                lotteryIcon = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                lotteryIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="M12 6v6l4 2"></path>
-                </svg>\`;
+                </svg>`;
             }
         }
         
@@ -608,36 +610,36 @@ async function loadStatusOverview() {
         if (selectionResponse.selection) {
             const selection = selectionResponse.selection;
             if (selection.is_confirmed) {
-                roomStatus = \`\${selection.building_name} \${selection.room_number}-\${selection.bed_number}\`;
+                roomStatus = `${selection.building_name} ${selection.room_number}-${selection.bed_number}`;
                 roomColor = 'var(--success-color)';
-                roomIcon = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                roomIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                     <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>\`;
+                </svg>`;
             } else {
                 roomStatus = '已选择待确认';
                 roomColor = 'var(--warning-color)';
-                roomIcon = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                roomIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="M12 8v4l2 2"></path>
-                </svg>\`;
+                </svg>`;
             }
         }
         
-        document.getElementById('statusOverview').innerHTML = \`
+        document.getElementById('statusOverview').innerHTML = `
             <div class="stat-card" style="text-align: center;">
-                <div style="color: \${lotteryColor}; margin-bottom: 0.5rem;">
-                    \${lotteryIcon}
+                <div style="color: ${lotteryColor}; margin-bottom: 0.5rem;">
+                    ${lotteryIcon}
                 </div>
                 <div class="stat-label">抽签状态</div>
-                <div class="stat-value" style="color: \${lotteryColor};">\${lotteryStatus}</div>
+                <div class="stat-value" style="color: ${lotteryColor};">${lotteryStatus}</div>
             </div>
             <div class="stat-card" style="text-align: center;">
-                <div style="color: \${roomColor}; margin-bottom: 0.5rem;">
-                    \${roomIcon}
+                <div style="color: ${roomColor}; margin-bottom: 0.5rem;">
+                    ${roomIcon}
                 </div>
                 <div class="stat-label">宿舍状态</div>
-                <div class="stat-value" style="color: \${roomColor};">\${roomStatus}</div>
+                <div class="stat-value" style="color: ${roomColor};">${roomStatus}</div>
             </div>
             <div class="stat-card" style="text-align: center;">
                 <div style="color: var(--info-color); margin-bottom: 0.5rem;">
@@ -649,19 +651,19 @@ async function loadStatusOverview() {
                 <div class="stat-label">账户类型</div>
                 <div class="stat-value" style="color: var(--info-color);">学生用户</div>
             </div>
-        \`;
+        `;
         console.log('Status overview loaded successfully');
     } catch (error) {
         console.error('加载状态概览失败:', error);
         const statusElement = document.getElementById('statusOverview');
         if (statusElement) {
-            statusElement.innerHTML = \`
+            statusElement.innerHTML = `
                 <div class="stat-card" style="text-align: center;">
                     <div class="stat-label">状态加载失败</div>
                     <div class="stat-value">请刷新页面重试</div>
                     <button class="btn btn-outline" onclick="loadStatusOverview()" style="margin-top: 0.5rem;">重试</button>
                 </div>
-            \`;
+            `;
         }
     }
 }
