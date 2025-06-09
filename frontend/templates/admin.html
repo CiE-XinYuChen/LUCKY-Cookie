@@ -453,7 +453,7 @@
 
 <!-- 抽签结果确认模态框 -->
 <div id="lotteryConfirmModal" class="modal-overlay" style="display: none;">
-    <div class="modal" style="max-width: 600px;">
+    <div class="modal" style="max-width: 900px;">
         <div class="modal-header">
             <h3 class="modal-title">抽签完成</h3>
         </div>
@@ -464,6 +464,7 @@
         </div>
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="hideLotteryConfirmModal()">关闭</button>
+            <button type="button" class="btn btn-primary" id="viewEditResultsBtn" onclick="toggleLotteryResultsView()">查看和修改结果</button>
             <button type="button" class="btn btn-success" id="publishLotteryBtn" onclick="publishCurrentLottery()">发布结果</button>
             <button type="button" class="btn btn-error" id="deleteLotteryBtn" onclick="deleteCurrentLottery()">删除重抽</button>
         </div>
@@ -1675,7 +1676,7 @@ function showLotteryConfirmDialog(lotteryData) {
     }
     
     const content = `
-        <div style="margin-bottom: 16px;">
+        <div id="lotteryBasicInfo" style="margin-bottom: 16px;">
             <p><strong>抽签名称：</strong>${lotteryData.lottery_name || '未知抽签'}</p>
             <p><strong>分配方式：</strong>${roomTypeInfo}</p>
             <p><strong>参与人数：</strong>${lotteryData.total_participants || 0}人</p>
@@ -1684,9 +1685,16 @@ function showLotteryConfirmDialog(lotteryData) {
         <div class="alert alert-warning">
             <p>抽签已完成并保存为草稿状态。请选择：</p>
             <ul>
+                <li><strong>查看和修改结果：</strong>查看详细抽签结果并进行必要的修改</li>
                 <li><strong>发布结果：</strong>学生将可以看到抽签结果</li>
                 <li><strong>删除重抽：</strong>删除此次抽签结果，重新进行抽签</li>
             </ul>
+        </div>
+        <div id="lotteryResultsSection" style="display: none; margin-top: 24px;">
+            <h4>抽签结果详情</h4>
+            <div id="lotteryResultsTable">
+                <!-- 抽签结果表格将通过JavaScript加载 -->
+            </div>
         </div>
     `;
     
@@ -1697,6 +1705,121 @@ function showLotteryConfirmDialog(lotteryData) {
 function hideLotteryConfirmModal() {
     document.getElementById('lotteryConfirmModal').style.display = 'none';
     currentLotteryId = null;
+    
+    // 重置视图状态
+    isResultsViewVisible = false;
+    const resultsSection = document.getElementById('lotteryResultsSection');
+    const toggleBtn = document.getElementById('viewEditResultsBtn');
+    if (resultsSection) resultsSection.style.display = 'none';
+    if (toggleBtn) toggleBtn.textContent = '查看和修改结果';
+}
+
+let isResultsViewVisible = false;
+
+async function toggleLotteryResultsView() {
+    const resultsSection = document.getElementById('lotteryResultsSection');
+    const toggleBtn = document.getElementById('viewEditResultsBtn');
+    
+    if (!isResultsViewVisible) {
+        // 显示结果
+        resultsSection.style.display = 'block';
+        toggleBtn.textContent = '隐藏结果';
+        isResultsViewVisible = true;
+        
+        // 加载抽签结果
+        await loadCurrentLotteryResults();
+    } else {
+        // 隐藏结果
+        resultsSection.style.display = 'none';
+        toggleBtn.textContent = '查看和修改结果';
+        isResultsViewVisible = false;
+    }
+}
+
+async function loadCurrentLotteryResults() {
+    if (!currentLotteryId) return;
+    
+    try {
+        const response = await api.getAllLotteryResults(1, 1000, currentLotteryId);
+        
+        if (!response.results || response.results.length === 0) {
+            document.getElementById('lotteryResultsTable').innerHTML = '<p>暂无抽签结果</p>';
+            return;
+        }
+        
+        const results = response.results.sort((a, b) => a.lottery_number - b.lottery_number);
+        
+        const table = `
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>抽签号</th>
+                            <th>姓名</th>
+                            <th>用户名</th>
+                            <th>分配房间类型</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${results.map(result => `
+                            <tr>
+                                <td><strong>${result.lottery_number}</strong></td>
+                                <td>${result.user_name}</td>
+                                <td>${result.user_username || ''}</td>
+                                <td>${result.room_type ? `${result.room_type}人间` : '未分配'}</td>
+                                <td>
+                                    <button class="btn btn-outline btn-sm" onclick="editCurrentLotteryResult(${result.id}, ${result.lottery_number}, '${result.room_type || ''}')">编辑</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        document.getElementById('lotteryResultsTable').innerHTML = table;
+    } catch (error) {
+        showAlert('加载抽签结果失败: ' + error.message, 'error');
+        document.getElementById('lotteryResultsTable').innerHTML = '<p>加载失败</p>';
+    }
+}
+
+async function editCurrentLotteryResult(resultId, currentLotteryNumber, currentRoomType) {
+    const newLotteryNumber = prompt('请输入新的抽签号码：', currentLotteryNumber);
+    if (newLotteryNumber === null || newLotteryNumber === '') {
+        return;
+    }
+    
+    if (isNaN(newLotteryNumber) || parseInt(newLotteryNumber) <= 0) {
+        showAlert('请输入有效的抽签号码', 'error');
+        return;
+    }
+    
+    const newRoomType = prompt('请输入房间类型（4或8）：', currentRoomType);
+    
+    if (newRoomType && !['4', '8'].includes(newRoomType)) {
+        showAlert('房间类型只能是4或8', 'error');
+        return;
+    }
+    
+    try {
+        const updateData = { 
+            lottery_number: parseInt(newLotteryNumber)
+        };
+        
+        if (newRoomType && newRoomType.trim() !== '') {
+            updateData.room_type = newRoomType.trim();
+        }
+        
+        await api.updateLotteryResult(resultId, updateData);
+        showAlert('抽签结果更新成功', 'success');
+        
+        // 重新加载当前抽签结果
+        await loadCurrentLotteryResults();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
 }
 
 async function publishCurrentLottery() {
