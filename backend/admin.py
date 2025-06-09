@@ -805,7 +805,7 @@ def get_room_type_allocations():
         FROM users u
         LEFT JOIN room_type_allocations rta ON u.id = rta.user_id
         LEFT JOIN lottery_results lr ON u.id = lr.user_id
-        LEFT JOIN lottery_settings ls ON lr.lottery_id = ls.id AND ls.is_published = 1
+        LEFT JOIN lottery_settings ls ON lr.lottery_id = ls.id
         LEFT JOIN users a ON rta.allocated_by = a.id
         WHERE u.is_admin = 0 
         AND (rta.user_id IS NOT NULL OR lr.user_id IS NOT NULL)
@@ -994,8 +994,7 @@ def get_detailed_statistics():
         WHERE u.is_admin = 0 
         AND (u.id IN (SELECT user_id FROM room_type_allocations)
              OR u.id IN (SELECT user_id FROM lottery_results lr 
-                         JOIN lottery_settings ls ON lr.lottery_id = ls.id 
-                         WHERE ls.is_published = 1))
+                         JOIN lottery_settings ls ON lr.lottery_id = ls.id))
     ''')
     stats['room_type_allocated_users'] = c.fetchone()['total']
     
@@ -1025,7 +1024,7 @@ def get_detailed_statistics():
             OR 
             (u.id IN (SELECT user_id FROM lottery_results lr 
                       JOIN lottery_settings ls ON lr.lottery_id = ls.id 
-                      WHERE ls.is_published = 1 AND (lr.room_type = '4' OR ls.room_type = '4')))
+                      WHERE (lr.room_type = '4' OR ls.room_type = '4')))
         )
     ''')
     stats['room_4_users'] = c.fetchone()['total']
@@ -1039,7 +1038,7 @@ def get_detailed_statistics():
             OR 
             (u.id IN (SELECT user_id FROM lottery_results lr 
                       JOIN lottery_settings ls ON lr.lottery_id = ls.id 
-                      WHERE ls.is_published = 1 AND (lr.room_type = '8' OR ls.room_type = '8')))
+                      WHERE (lr.room_type = '8' OR ls.room_type = '8')))
         )
     ''')
     stats['room_8_users'] = c.fetchone()['total']
@@ -1098,7 +1097,7 @@ def export_allocations():
             FROM users u
             LEFT JOIN room_type_allocations rta ON u.id = rta.user_id
             LEFT JOIN lottery_results lr ON u.id = lr.user_id
-            LEFT JOIN lottery_settings ls ON lr.lottery_id = ls.id AND ls.is_published = 1
+            LEFT JOIN lottery_settings ls ON lr.lottery_id = ls.id
             LEFT JOIN room_selections rs ON u.id = rs.user_id
             LEFT JOIN rooms r ON rs.room_id = r.id
             LEFT JOIN buildings b_name ON r.building_id = b_name.id
