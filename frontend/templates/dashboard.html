@@ -28,10 +28,6 @@
             <div class="section-card user-info-card">
                 <header class="section-header">
                     <h2 class="section-title">
-                        <svg class="section-icon" viewBox="0 0 24 24">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
                         个人信息
                     </h2>
                 </header>
@@ -45,10 +41,6 @@
                     </div>
                     <div class="section-actions">
                         <button type="button" class="btn btn-outline" id="changePasswordBtn">
-                            <svg class="btn-icon" viewBox="0 0 24 24">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
                             修改密码
                         </button>
                     </div>
@@ -61,11 +53,6 @@
             <div class="section-card lottery-results-card">
                 <header class="section-header">
                     <h2 class="section-title">
-                        <svg class="section-icon" viewBox="0 0 24 24">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <path d="M3 9h18"></path>
-                            <path d="M9 21V9"></path>
-                        </svg>
                         我的抽签结果
                     </h2>
                 </header>
@@ -84,10 +71,6 @@
             <div class="section-card room-selection-card">
                 <header class="section-header">
                     <h2 class="section-title">
-                        <svg class="section-icon" viewBox="0 0 24 24">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                        </svg>
                         我的宿舍选择
                     </h2>
                 </header>
@@ -109,10 +92,7 @@
         <header class="modal-header">
             <h3 id="modalTitle" class="modal-title">修改密码</h3>
             <button type="button" class="modal-close" aria-label="关闭">
-                <svg viewBox="0 0 24 24">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
+                ×
             </button>
         </header>
         <div class="modal-content">
@@ -343,21 +323,12 @@ class DashboardManager {
             <div class="user-info-grid">
                 <div class="info-item">
                     <div class="info-label">
-                        <svg class="info-icon" viewBox="0 0 24 24">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
                         姓名
                     </div>
                     <div class="info-value primary">${this.escapeHtml(userData.name)}</div>
                 </div>
                 <div class="info-item">
                     <div class="info-label">
-                        <svg class="info-icon" viewBox="0 0 24 24">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <circle cx="9" cy="9" r="2"></circle>
-                            <path d="M21 15.5c-.3-2.4-2.5-4.5-5-4.5s-4.7 2.1-5 4.5"></path>
-                        </svg>
                         用户名
                     </div>
                     <div class="info-value secondary">${this.escapeHtml(userData.username)}</div>
@@ -400,11 +371,6 @@ class DashboardManager {
             if (hasClicked) {
                 container.innerHTML = `
                     <div class="alert alert-info">
-                        <svg class="alert-icon" viewBox="0 0 24 24">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
                         <p>您已参与抽签，请等待管理员公布抽签结果。</p>
                     </div>
                 `;
@@ -424,29 +390,13 @@ class DashboardManager {
     renderLotteryPrompt() {
         return `
             <div class="lottery-prompt">
-                <div class="prompt-icon">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <path d="M3 9h18"></path>
-                        <path d="M9 21V9"></path>
-                    </svg>
-                </div>
                 <h3 class="prompt-title">宿舍抽签</h3>
                 <p class="prompt-description">欢迎参与宿舍抽签！系统将为您随机分配抽签号码，根据号码顺序选择心仪的宿舍</p>
                 <button type="button" class="btn btn-primary lottery-btn" data-action="participate-lottery">
-                    <svg class="btn-icon" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <polygon points="10 8 16 12 10 16"></polygon>
-                    </svg>
                     <span class="btn-text">开始抽签</span>
                     <span class="btn-loading" style="display: none;"></span>
                 </button>
                 <div class="prompt-note">
-                    <svg class="note-icon" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="6" x2="12" y2="10"></line>
-                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                    </svg>
                     抽签结果将由管理员统一发布
                 </div>
             </div>
@@ -571,10 +521,6 @@ class DashboardManager {
         if (selection.is_confirmed) {
             return `
                 <div class="alert alert-success">
-                    <svg class="alert-icon" viewBox="0 0 24 24">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                    </svg>
                     您的宿舍选择已确认
                 </div>
             `;
@@ -583,16 +529,9 @@ class DashboardManager {
         return `
             <div class="selection-actions">
                 <a href="/room-selection" class="btn btn-outline">
-                    <svg class="btn-icon" viewBox="0 0 24 24">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
                     修改选择
                 </a>
                 <button type="button" class="btn btn-success" data-action="confirm-selection">
-                    <svg class="btn-icon" viewBox="0 0 24 24">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
                     <span class="btn-text">确认选择</span>
                     <span class="btn-loading" style="display: none;"></span>
                 </button>
@@ -672,16 +611,10 @@ class DashboardManager {
         
         return `
             <div class="status-card">
-                <div class="status-icon" style="color: ${lotteryStatus.color};">
-                    ${this.getIcon(lotteryStatus.icon)}
-                </div>
                 <div class="status-label">抽签状态</div>
                 <div class="status-value" style="color: ${lotteryStatus.color};">${lotteryStatus.text}</div>
             </div>
             <div class="status-card">
-                <div class="status-icon" style="color: ${roomStatus.color};">
-                    ${this.getIcon(roomStatus.icon)}
-                </div>
                 <div class="status-label">宿舍状态</div>
                 <div class="status-value" style="color: ${roomStatus.color};">${roomStatus.text}</div>
             </div>
@@ -693,11 +626,11 @@ class DashboardManager {
      */
     getIcon(iconName) {
         const icons = {
-            'help-circle': '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="10"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
-            'check-circle': '<svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
-            'clock': '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>',
-            'home': '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
-            'user': '<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
+            'help-circle': '',
+            'check-circle': '',
+            'clock': '',
+            'home': '',
+            'user': ''
         };
         
         return icons[iconName] || icons['help-circle'];
@@ -801,11 +734,6 @@ class DashboardManager {
         if (container) {
             container.innerHTML = `
                 <div class="error-state">
-                    <svg class="error-icon" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="15" y1="9" x2="9" y2="15"></line>
-                        <line x1="9" y1="9" x2="15" y2="15"></line>
-                    </svg>
                     <p class="error-message">${message}</p>
                     <button type="button" class="btn btn-outline retry-btn" data-action="retry">重试</button>
                 </div>
