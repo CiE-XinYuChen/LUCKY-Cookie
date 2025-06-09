@@ -185,7 +185,7 @@ async function loadMyLotteryResult() {
 
 async function loadBuildings() {
     try {
-        const response = await api.getBuildings();
+        const response = await api.getBuildingsForSelection();
         buildings = response.buildings;
         
         const buildingSelect = document.getElementById('buildingFilter');
@@ -196,6 +196,7 @@ async function loadBuildings() {
         buildingSelect.innerHTML = '<option value="">所有建筑</option>' + options;
     } catch (error) {
         console.error('加载建筑列表失败:', error);
+        showAlert('无法加载楼栋列表，请刷新页面重试', 'error');
     }
 }
 

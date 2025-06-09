@@ -305,6 +305,35 @@ def update_lottery_result(result_id):
     except Exception as e:
         return jsonify({'error': '更新失败'}), 500
 
+@lottery_bp.route('/buildings', methods=['GET'])
+@jwt_required()
+def get_buildings_for_selection():
+    """获取有可用房间的楼栋列表（供普通用户选择宿舍时使用）"""
+    conn = db.get_db()
+    c = conn.cursor()
+    
+    # 只获取有可用房间的楼栋
+    c.execute('''
+        SELECT DISTINCT b.id, b.name
+        FROM buildings b
+        JOIN rooms r ON b.id = r.building_id
+        WHERE r.is_available = 1 AND r.current_occupancy < r.max_capacity
+        ORDER BY b.name
+    ''')
+    
+    buildings = []
+    for row in c.fetchall():
+        buildings.append({
+            'id': row['id'],
+            'name': row['name']
+        })
+    
+    conn.close()
+    
+    return jsonify({
+        'buildings': buildings
+    }), 200
+
 @lottery_bp.route('/rooms/available', methods=['GET'])
 @jwt_required()
 def get_available_rooms():

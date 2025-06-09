@@ -312,6 +312,10 @@ class API {
         return this.get('/api/lottery/rooms/available', params);
     }
 
+    async getBuildingsForSelection() {
+        return this.get('/api/lottery/buildings');
+    }
+
     async getMySelection() {
         return this.get('/api/lottery/my-selection');
     }
