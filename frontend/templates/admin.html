@@ -2172,6 +2172,13 @@ async function publishCurrentLottery() {
         return;
     }
     
+    // 添加确认对话框
+    const confirmed = confirm('确定要发布抽签结果吗？\n\n发布后学生将能看到抽签结果并开始选择宿舍，此操作不可撤销。');
+    
+    if (!confirmed) {
+        return;
+    }
+    
     try {
         const response = await api.publishLotteryResults(currentLotteryId);
         showAlert(response.message, 'success');
@@ -2295,6 +2302,13 @@ async function loadLotteryResults() {
 }
 
 async function publishLottery(lotteryId) {
+    // 添加确认对话框
+    const confirmed = confirm('确定要发布抽签结果吗？\n\n发布后学生将能看到抽签结果并开始选择宿舍，此操作不可撤销。');
+    
+    if (!confirmed) {
+        return;
+    }
+    
     try {
         const response = await api.publishLotteryResults(lotteryId);
         showAlert(response.message, 'success');
