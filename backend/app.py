@@ -48,10 +48,6 @@ def create_app(config_name=None):
     def dashboard():
         return render_template('dashboard.html')
     
-    @app.route('/lottery')
-    def lottery_page():
-        return render_template('lottery.html')
-    
     @app.route('/room-selection')
     def room_selection_page():
         return render_template('room_selection.html')
