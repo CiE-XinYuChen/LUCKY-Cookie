@@ -19,14 +19,14 @@
                 公平、透明、高效的宿舍分配系统
             </p>
             
-            <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+            <div style="display: flex; gap: 1.5rem; justify-content: center; flex-wrap: wrap; align-items: center;">
                 <a href="/login" class="btn btn-primary" style="font-size: 1.125rem; padding: 0.875rem 2.5rem; box-shadow: var(--shadow-md);">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                        <polyline points="10 17 15 12 10 7"></polyline>
-                        <line x1="15" y1="12" x2="3" y2="12"></line>
-                    </svg>
                     立即登录
+                </a>
+                
+                <!-- 宿舍选择大按钮 -->
+                <a href="/room-selection" class="btn btn-secondary dorm-selection-btn" style="font-size: 1.25rem; padding: 1.25rem 3rem; box-shadow: var(--shadow-lg); background: linear-gradient(135deg, var(--success-color), var(--info-color)); border: none; color: white; font-weight: 600;">
+                    🏠 宿舍选择
                 </a>
             </div>
         </div>
@@ -78,6 +78,24 @@
             </div>
         </div>
     </div>
+    
+    <!-- 宿舍选择专区 -->
+    <div style="background: linear-gradient(135deg, var(--primary-bg), var(--secondary-light)); border-radius: var(--radius-xl); padding: 3rem 2rem; margin: 4rem 0; text-align: center;">
+        <div class="animate-slideIn" style="animation-delay: 0.4s;">
+            <h2 style="font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary-dark); font-weight: 700;">
+                🏠 宿舍选择中心
+            </h2>
+            <p style="font-size: 1.125rem; color: var(--text-secondary); margin-bottom: 2.5rem; max-width: 500px; margin-left: auto; margin-right: auto;">
+                已完成抽签？立即进入宿舍选择，挑选您心仪的房间和床位
+            </p>
+            <a href="/room-selection" class="btn dorm-selection-main" style="font-size: 1.375rem; padding: 1.5rem 4rem; background: linear-gradient(135deg, var(--success-color), var(--info-color)); color: white; border: none; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl); font-weight: 600; text-decoration: none; transition: all 0.3s ease; display: inline-block;">
+                立即选择宿舍
+            </a>
+            <div style="margin-top: 1.5rem; font-size: 0.875rem; color: var(--text-muted);">
+                💡 提示：需要先完成抽签才能选择宿舍
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
@@ -85,6 +103,17 @@
 <style>
     body {
         background-color: var(--background-secondary);
+    }
+    
+    /* 宿舍选择按钮悬停效果 */
+    .dorm-selection-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-2xl);
+    }
+    
+    .dorm-selection-main:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 25px 50px -12px rgba(16, 185, 129, 0.4);
     }
 </style>
 <script>
