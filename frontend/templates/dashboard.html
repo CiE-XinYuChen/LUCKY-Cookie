@@ -214,7 +214,7 @@ async function loadLotteryResults() {
                                 <path d="M12 2v20"></path>
                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                             </svg>
-                            您已被分配到${result.room_type}人间（结果尚未发布）
+                            您已被分配到${result.room_type}人间
                         </div>
                     `}
                 ` : ''}
@@ -268,20 +268,9 @@ async function loadRoomSelection() {
                     </div>
                 `;
             } else {
-                // 检查抽签结果是否已发布
-                const lotteryResponse = await api.getLotteryResults();
-                const hasPublishedResult = lotteryResponse.results && lotteryResponse.results.some(result => result.is_published);
-                
-                if (!hasPublishedResult) {
-                    container.innerHTML = `
-                        <div class="alert alert-warning">
-                            <p>您的抽签结果尚未发布，请等待管理员发布后再选择宿舍。</p>
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = `
-                        <p>您还没有选择宿舍</p>
-                        <a href="/room-selection" class="btn btn-primary" id="selectRoomBtn">立即选择宿舍</a>
+                container.innerHTML = `
+                    <p>您还没有选择宿舍</p>
+                    <a href="/room-selection" class="btn btn-primary" id="selectRoomBtn">立即选择宿舍</a>
                     `;
                 }
             }

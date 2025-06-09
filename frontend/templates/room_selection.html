@@ -148,21 +148,7 @@ async function loadMyLotteryResult() {
         
         myLotteryResult = response.results[0]; // 取最新的抽签结果
         
-        // 检查抽签结果是否已发布
-        if (!myLotteryResult.is_published) {
-            document.querySelector('.container').innerHTML = `
-                <div class="card" style="text-align: center; padding: 3rem;">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--warning-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
-                        <path d="M12 2v20"></path>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                    </svg>
-                    <h2>抽签结果尚未发布</h2>
-                    <p style="color: var(--text-secondary); margin: 1rem 0;">您的抽签结果还未发布，请等待管理员发布后再选择宿舍</p>
-                    <a href="/dashboard" class="btn btn-primary">返回个人中心</a>
-                </div>
-            `;
-            return false;
-        }
+        // 直接跨过发布状态检查，允许用户进入宿舍选择
         
         // 在页面顶部显示抽签结果信息
         const header = document.querySelector('h1');
