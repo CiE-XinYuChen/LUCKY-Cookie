@@ -2295,10 +2295,16 @@ async function loadLotteryResults() {
             
             // 从结果中提取抽签设置信息
             if (!lotterySettings[result.lottery_id]) {
+                // 调试输出
+                console.log('Debug - Lottery Result:', result);
+                console.log('Debug - is_published value:', result.is_published, 'type:', typeof result.is_published);
+                
                 lotterySettings[result.lottery_id] = {
                     lottery_name: result.lottery_name || '未知抽签',
-                    is_published: result.is_published !== null && result.is_published !== undefined ? result.is_published : false
+                    is_published: Boolean(result.is_published)
                 };
+                
+                console.log('Debug - Final is_published:', lotterySettings[result.lottery_id].is_published);
             }
         });
         

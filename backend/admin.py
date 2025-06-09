@@ -82,7 +82,7 @@ def lottery_result_to_dict(result):
         'group_number': result['group_number'],
         'room_type': result['room_type'] if 'room_type' in result.keys() else None,
         'lottery_name': result['lottery_name'] if 'lottery_name' in result.keys() else None,
-        'is_published': bool(result['is_published']) if 'is_published' in result.keys() else None,
+        'is_published': bool(result['is_published']) if 'is_published' in result.keys() else False,
         'created_at': result['created_at']
     }
 
