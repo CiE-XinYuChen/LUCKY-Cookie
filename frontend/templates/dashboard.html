@@ -125,16 +125,28 @@
 
 {% block scripts %}
 <script>
+// 立即执行测试
 console.log('Dashboard script block loaded');
+
+// 立即更新页面状态，不等待DOM加载
+try {
+    document.getElementById('jsStatus').textContent = '脚本已加载';
+} catch (e) {
+    console.log('DOM not ready yet, waiting for DOMContentLoaded');
+}
 
 let userData = null;
 let hasLotteryResult = false;
 
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Dashboard DOMContentLoaded started');
+// 使用多种方式确保代码执行
+function initDashboard() {
+    console.log('Dashboard initialization started');
     
     // 更新调试信息
-    document.getElementById('jsStatus').textContent = '已执行';
+    const jsStatusElement = document.getElementById('jsStatus');
+    if (jsStatusElement) {
+        jsStatusElement.textContent = 'DOMContentLoaded已触发';
+    }
     
     // 添加基础检查
     console.log('typeof api:', typeof api);
@@ -173,7 +185,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Error in dashboard loading chain:', error);
             showError('加载用户信息失败: ' + error.message);
         });
-});
+}
 
 function showError(message) {
     const elements = ['statusOverview', 'userInfo', 'lotteryResults', 'roomSelection'];
@@ -653,6 +665,25 @@ async function loadStatusOverview() {
         }
     }
 }
+
+// 多种方式确保初始化函数被调用
+document.addEventListener('DOMContentLoaded', initDashboard);
+
+// 如果DOM已经加载完成，立即执行
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initDashboard);
+} else {
+    // DOM已经加载完成
+    initDashboard();
+}
+
+// 备用方式：使用setTimeout确保执行
+setTimeout(function() {
+    if (document.getElementById('jsStatus').textContent === '等待执行') {
+        console.log('Using setTimeout fallback to initialize');
+        initDashboard();
+    }
+}, 1000);
 </script>
 
 {% endblock %}
