@@ -237,7 +237,17 @@ def import_users():
         return jsonify({'error': '只支持CSV文件'}), 400
     
     try:
-        df = pd.read_csv(io.StringIO(file.read().decode('utf-8')))
+        # 尝试不同的编码格式读取CSV文件
+        file_content = file.read()
+        try:
+            content = file_content.decode('utf-8')
+        except UnicodeDecodeError:
+            try:
+                content = file_content.decode('gbk')
+            except UnicodeDecodeError:
+                content = file_content.decode('latin-1')
+        
+        df = pd.read_csv(io.StringIO(content))
         
         required_columns = ['username', 'name', 'password']
         if not all(col in df.columns for col in required_columns):
@@ -247,33 +257,38 @@ def import_users():
         error_count = 0
         errors = []
         
-        with db.get_db_connection() as conn:
-            c = conn.cursor()
-            
-            for index, row in df.iterrows():
-                try:
-                    username = str(row['username']).strip()
-                    name = str(row['name']).strip()
-                    password = str(row['password']).strip()
-                    
-                    # Check if user exists
-                    c.execute('SELECT id FROM users WHERE username = ?', (username,))
-                    if c.fetchone():
-                        error_count += 1
-                        errors.append(f"第{index+2}行: 用户名 {username} 已存在")
-                        continue
-                    
-                    # Create user
-                    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                    c.execute(
-                        'INSERT INTO users (username, password_hash, name) VALUES (?, ?, ?)',
-                        (username, password_hash, name)
-                    )
-                    success_count += 1
-                    
-                except Exception as e:
+        for index, row in df.iterrows():
+            try:
+                # Handle NaN values from pandas
+                username = str(row['username']).strip() if pd.notna(row['username']) else ''
+                name = str(row['name']).strip() if pd.notna(row['name']) else ''
+                password = str(row['password']).strip() if pd.notna(row['password']) else ''
+                
+                # Check if username, name, and password are not empty
+                if not username or not name or not password or username == 'nan' or name == 'nan' or password == 'nan':
                     error_count += 1
-                    errors.append(f"第{index+2}行: {str(e)}")
+                    errors.append(f"第{index+2}行: 用户名、姓名和密码不能为空")
+                    continue
+                
+                # Basic validation for username
+                if len(username) < 3:
+                    error_count += 1
+                    errors.append(f"第{index+2}行: 用户名 {username} 长度至少3个字符")
+                    continue
+                
+                # Check if user exists using database function
+                if db.get_user_by_username(username):
+                    error_count += 1
+                    errors.append(f"第{index+2}行: 用户名 {username} 已存在")
+                    continue
+                
+                # Create user using database function
+                db.create_user(username, password, name)
+                success_count += 1
+                
+            except Exception as e:
+                error_count += 1
+                errors.append(f"第{index+2}行: {str(e)}")
         
         return jsonify({
             'message': f'导入完成：成功 {success_count} 个，失败 {error_count} 个',
