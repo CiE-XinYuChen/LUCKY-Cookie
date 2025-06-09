@@ -220,22 +220,22 @@ def get_lottery_results():
                 ORDER BY lr.lottery_number
             ''')
     else:
-        # 学生可以查看自己的所有抽签结果（包括未发布的）
+        # 学生只能查看已发布的抽签结果
         if lottery_id:
             c.execute('''
-                SELECT lr.*, u.name as user_name, ls.is_published, ls.lottery_name
+                SELECT lr.*, u.name as user_name
                 FROM lottery_results lr
                 JOIN users u ON lr.user_id = u.id
                 JOIN lottery_settings ls ON lr.lottery_id = ls.id
-                WHERE lr.user_id = ? AND lr.lottery_id = ?
+                WHERE lr.user_id = ? AND lr.lottery_id = ? AND ls.is_published = 1
             ''', (current_user_id, lottery_id))
         else:
             c.execute('''
-                SELECT lr.*, u.name as user_name, ls.is_published, ls.lottery_name
+                SELECT lr.*, u.name as user_name
                 FROM lottery_results lr
                 JOIN users u ON lr.user_id = u.id
                 JOIN lottery_settings ls ON lr.lottery_id = ls.id
-                WHERE lr.user_id = ?
+                WHERE lr.user_id = ? AND ls.is_published = 1
                 ORDER BY lr.created_at DESC
             ''', (current_user_id,))
     

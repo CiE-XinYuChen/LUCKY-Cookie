@@ -73,9 +73,13 @@ def lottery_result_to_dict(result):
         'id': result['id'],
         'user_id': result['user_id'],
         'user_name': result['user_name'] if 'user_name' in result.keys() else None,
+        'user_username': result['username'] if 'username' in result.keys() else None,
         'lottery_id': result['lottery_id'],
         'lottery_number': result['lottery_number'],
         'group_number': result['group_number'],
+        'room_type': result['room_type'] if 'room_type' in result.keys() else None,
+        'lottery_name': result['lottery_name'] if 'lottery_name' in result.keys() else None,
+        'is_published': result['is_published'] if 'is_published' in result.keys() else None,
         'created_at': result['created_at']
     }
 

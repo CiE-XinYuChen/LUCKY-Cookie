@@ -95,28 +95,12 @@ async function loadMyLotteryResult() {
         if (response.results && response.results.length > 0) {
             myLotteryResult = response.results[0]; // 取最新的抽签结果
             
-            // 检查抽签结果是否已发布
-            if (!myLotteryResult.is_published) {
-                // 抽签结果未发布，显示提示
-                const container = document.querySelector('.container');
-                container.innerHTML = `
-                    <h1>宿舍选择</h1>
-                    <div class="alert alert-warning">
-                        <h3>抽签结果未发布</h3>
-                        <p><strong>您的抽签结果：</strong>抽签号 ${myLotteryResult.lottery_number}，分配房间类型：${myLotteryResult.room_type}人间（草稿状态）</p>
-                        <p>管理员尚未正式发布抽签结果，暂时无法选择宿舍。请等待管理员发布结果后再进行选择。</p>
-                        <a href="/dashboard" class="btn btn-primary">返回个人中心</a>
-                    </div>
-                `;
-                return;
-            }
-            
             // 在页面顶部显示抽签结果信息
             const header = document.querySelector('h1');
             if (myLotteryResult.room_type) {
                 header.insertAdjacentHTML('afterend', `
                     <div class="alert alert-info" style="margin-bottom: 24px;">
-                        <strong>您的抽签结果：</strong>抽签号 ${myLotteryResult.lottery_number}，分配房间类型：${myLotteryResult.room_type}人间（已发布）
+                        <strong>您的抽签结果：</strong>抽签号 ${myLotteryResult.lottery_number}，分配房间类型：${myLotteryResult.room_type}人间
                     </div>
                 `);
                 
