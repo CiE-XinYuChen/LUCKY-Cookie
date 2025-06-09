@@ -1168,7 +1168,7 @@ async function loadUnallocatedUsers() {
                 </thead>
                 <tbody>
                     ${response.users.map(user => `
-                        <tr ${selectedUserId === user.id ? 'style="background-color: #e3f2fd;"' : ''}>
+                        <tr ${selectedUserId === user.id ? 'style=\"background-color: #e3f2fd;\"' : ''}>
                             <td>${user.name}</td>
                             <td>${user.username}</td>
                             <td>
@@ -1274,7 +1274,7 @@ async function loadBedsForAllocation() {
                 </thead>
                 <tbody>
                     ${availableBeds.map(bed => `
-                        <tr ${selectedBedId === bed.id ? 'style="background-color: #e8f5e8;"' : ''}>
+                        <tr ${selectedBedId === bed.id ? 'style=\"background-color: #e8f5e8;\"' : ''}>
                             <td>${bed.bed_number}</td>
                             <td>可用</td>
                             <td>
@@ -1418,7 +1418,7 @@ async function loadUnallocatedRoomTypeUsers() {
                 </thead>
                 <tbody>
                     ${response.users.map(user => `
-                        <tr ${selectedRoomTypeUserId === user.id ? 'style="background-color: #e3f2fd;"' : ''}>
+                        <tr ${selectedRoomTypeUserId === user.id ? 'style=\"background-color: #e3f2fd;\"' : ''}>
                             <td>${user.name}</td>
                             <td>${user.username}</td>
                             <td>
