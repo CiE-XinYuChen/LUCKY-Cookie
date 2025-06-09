@@ -486,8 +486,8 @@ let selectedRoomTypeUserId = null;
 let selectedRoomTypeUserName = '';
 let currentAllocationTab = 'roomType';
 
-document.addEventListener('DOMContentLoaded', function() {
-    if (!requireAdmin()) return;
+document.addEventListener('DOMContentLoaded', async function() {
+    if (!(await requireAdmin())) return;
     
     showTab('users');
 });

@@ -390,10 +390,34 @@ function requireAuth() {
     return true;
 }
 
-function requireAdmin() {
-    if (!requireAuth() || !isAdmin()) {
-        showAlert('需要管理员权限', 'error');
+async function requireAdmin() {
+    if (!requireAuth()) {
         return false;
     }
-    return true;
+    
+    // 先检查本地存储的用户信息
+    if (isAdmin()) {
+        return true;
+    }
+    
+    // 如果本地检查失败，尝试从服务器重新获取用户信息
+    try {
+        const response = await api.getProfile();
+        if (response.user) {
+            // 更新本地存储的用户信息
+            localStorage.setItem('user', JSON.stringify(response.user));
+            
+            if (response.user.is_admin) {
+                return true;
+            }
+        }
+    } catch (error) {
+        console.error('获取用户信息失败:', error);
+    }
+    
+    showAlert('需要管理员权限', 'error');
+    setTimeout(() => {
+        window.location.href = '/login';
+    }, 2000);
+    return false;
 }
