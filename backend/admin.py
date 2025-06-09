@@ -33,24 +33,24 @@ def room_to_dict(room):
     return {
         'id': room['id'],
         'building_id': room['building_id'],
-        'building_name': room.get('building_name'),
+        'building_name': room['building_name'] if 'building_name' in room.keys() else None,
         'room_number': room['room_number'],
         'room_type': room['room_type'],
         'max_capacity': room['max_capacity'],
         'current_occupancy': room['current_occupancy'],
         'is_available': bool(room['is_available']),
-        'available_beds': room.get('available_beds', 0)
+        'available_beds': room['available_beds'] if 'available_beds' in room.keys() else 0
     }
 
 def allocation_to_dict(allocation):
     return {
         'id': allocation['id'],
         'user_id': allocation['user_id'],
-        'user_name': allocation.get('user_name'),
-        'user_username': allocation.get('user_username'),
-        'room_number': allocation.get('room_number'),
-        'building_name': allocation.get('building_name'),
-        'bed_number': allocation.get('bed_number'),
+        'user_name': allocation['user_name'] if 'user_name' in allocation.keys() else None,
+        'user_username': allocation['user_username'] if 'user_username' in allocation.keys() else None,
+        'room_number': allocation['room_number'] if 'room_number' in allocation.keys() else None,
+        'building_name': allocation['building_name'] if 'building_name' in allocation.keys() else None,
+        'bed_number': allocation['bed_number'] if 'bed_number' in allocation.keys() else None,
         'selected_at': allocation['selected_at'],
         'is_confirmed': bool(allocation['is_confirmed'])
     }
@@ -59,11 +59,11 @@ def room_type_allocation_to_dict(rta):
     return {
         'id': rta['id'],
         'user_id': rta['user_id'],
-        'user_name': rta.get('user_name'),
-        'user_username': rta.get('username'),
+        'user_name': rta['user_name'] if 'user_name' in rta.keys() else None,
+        'user_username': rta['username'] if 'username' in rta.keys() else None,
         'room_type': rta['room_type'],
         'allocated_by': rta['allocated_by'],
-        'allocator_name': rta.get('allocator_name'),
+        'allocator_name': rta['allocator_name'] if 'allocator_name' in rta.keys() else None,
         'allocated_at': rta['allocated_at'],
         'notes': rta['notes']
     }
@@ -72,7 +72,7 @@ def lottery_result_to_dict(result):
     return {
         'id': result['id'],
         'user_id': result['user_id'],
-        'user_name': result.get('user_name'),
+        'user_name': result['user_name'] if 'user_name' in result.keys() else None,
         'lottery_id': result['lottery_id'],
         'lottery_number': result['lottery_number'],
         'group_number': result['group_number'],
@@ -92,11 +92,11 @@ def lottery_setting_to_dict(lottery):
 def history_to_dict(history):
     return {
         'id': history['id'],
-        'user_name': history.get('user_name'),
-        'room_info': history.get('room_info'),
-        'bed_number': history.get('bed_number'),
+        'user_name': history['user_name'] if 'user_name' in history.keys() else None,
+        'room_info': history['room_info'] if 'room_info' in history.keys() else None,
+        'bed_number': history['bed_number'] if 'bed_number' in history.keys() else None,
         'action': history['action'],
-        'operator_name': history.get('operator_name'),
+        'operator_name': history['operator_name'] if 'operator_name' in history.keys() else None,
         'operated_at': history['operated_at'],
         'notes': history['notes']
     }
@@ -670,7 +670,7 @@ def import_room_type_allocations():
                         continue
                     
                     # Allocate room type
-                    notes = row.get('notes', '') if 'notes' in df.columns else None
+                    notes = row['notes'] if 'notes' in df.columns and pd.notna(row['notes']) else None
                     db.allocate_room_type(user['id'], room_type, current_user_id, notes)
                     success_count += 1
                     

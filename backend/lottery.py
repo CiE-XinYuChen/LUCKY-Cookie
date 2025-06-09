@@ -21,7 +21,7 @@ def lottery_result_to_dict(result):
     return {
         'id': result['id'],
         'user_id': result['user_id'],
-        'user_name': result.get('user_name'),
+        'user_name': result['user_name'] if 'user_name' in result.keys() else None,
         'lottery_id': result['lottery_id'],
         'lottery_number': result['lottery_number'],
         'group_number': result['group_number'],
