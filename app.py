@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 import os
 from backend.app import create_app
+from backend import database as db
 
 app = create_app()
 
 if __name__ == '__main__':
-    # 确保数据库表存在
+    # 确保数据库存在并初始化
     with app.app_context():
-        from backend.models import db
-        db.create_all()
-        print("数据库表创建完成")
+        db.init_db()
+        print("数据库初始化完成")
     
     # 启动应用
     port = int(os.environ.get('PORT', 5000))

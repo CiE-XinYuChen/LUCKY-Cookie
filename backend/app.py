@@ -3,7 +3,7 @@ from flask import Flask, render_template, send_from_directory
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config import config
-from .models import db
+from . import database as db
 from .auth import auth_bp
 from .admin import admin_bp
 from .lottery import lottery_bp
@@ -19,7 +19,9 @@ def create_app(config_name=None):
     
     app.config.from_object(config[config_name])
     
-    db.init_app(app)
+    # Initialize database
+    with app.app_context():
+        db.init_db()
     
     jwt = JWTManager(app)
     
@@ -66,6 +68,4 @@ def create_app(config_name=None):
 
 if __name__ == '__main__':
     app = create_app()
-    with app.app_context():
-        db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5000)

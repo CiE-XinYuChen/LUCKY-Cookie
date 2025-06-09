@@ -3,11 +3,103 @@ import io
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
-from .models import db, User, LotterySetting, Building, Room, Bed, LotteryResult, RoomSelection, AllocationHistory, RoomTypeAllocation
 from .auth import admin_required
 from datetime import datetime
+import bcrypt
+import random
+from . import database as db
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
+
+# Helper functions to convert database rows to dictionaries
+def user_to_dict(user):
+    return {
+        'id': user['id'],
+        'username': user['username'],
+        'name': user['name'],
+        'is_admin': bool(user['is_admin']),
+        'created_at': user['created_at']
+    }
+
+def building_to_dict(building):
+    return {
+        'id': building['id'],
+        'name': building['name'],
+        'description': building['description'],
+        'created_at': building['created_at']
+    }
+
+def room_to_dict(room):
+    return {
+        'id': room['id'],
+        'building_id': room['building_id'],
+        'building_name': room.get('building_name'),
+        'room_number': room['room_number'],
+        'room_type': room['room_type'],
+        'max_capacity': room['max_capacity'],
+        'current_occupancy': room['current_occupancy'],
+        'is_available': bool(room['is_available']),
+        'available_beds': room.get('available_beds', 0)
+    }
+
+def allocation_to_dict(allocation):
+    return {
+        'id': allocation['id'],
+        'user_id': allocation['user_id'],
+        'user_name': allocation.get('user_name'),
+        'user_username': allocation.get('user_username'),
+        'room_number': allocation.get('room_number'),
+        'building_name': allocation.get('building_name'),
+        'bed_number': allocation.get('bed_number'),
+        'selected_at': allocation['selected_at'],
+        'is_confirmed': bool(allocation['is_confirmed'])
+    }
+
+def room_type_allocation_to_dict(rta):
+    return {
+        'id': rta['id'],
+        'user_id': rta['user_id'],
+        'user_name': rta.get('user_name'),
+        'user_username': rta.get('username'),
+        'room_type': rta['room_type'],
+        'allocated_by': rta['allocated_by'],
+        'allocator_name': rta.get('allocator_name'),
+        'allocated_at': rta['allocated_at'],
+        'notes': rta['notes']
+    }
+
+def lottery_result_to_dict(result):
+    return {
+        'id': result['id'],
+        'user_id': result['user_id'],
+        'user_name': result.get('user_name'),
+        'lottery_id': result['lottery_id'],
+        'lottery_number': result['lottery_number'],
+        'group_number': result['group_number'],
+        'created_at': result['created_at']
+    }
+
+def lottery_setting_to_dict(lottery):
+    return {
+        'id': lottery['id'],
+        'lottery_name': lottery['lottery_name'],
+        'lottery_time': lottery['lottery_time'],
+        'is_published': bool(lottery['is_published']),
+        'room_type': lottery['room_type'],
+        'created_at': lottery['created_at']
+    }
+
+def history_to_dict(history):
+    return {
+        'id': history['id'],
+        'user_name': history.get('user_name'),
+        'room_info': history.get('room_info'),
+        'bed_number': history.get('bed_number'),
+        'action': history['action'],
+        'operator_name': history.get('operator_name'),
+        'operated_at': history['operated_at'],
+        'notes': history['notes']
+    }
 
 @admin_bp.route('/users', methods=['GET'])
 @admin_required
@@ -16,47 +108,64 @@ def get_users():
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '')
     
-    query = User.query
-    if search:
-        query = query.filter(
-            db.or_(
-                User.username.ilike(f'%{search}%'),
-                User.name.ilike(f'%{search}%')
-            )
-        )
+    conn = db.get_db()
+    c = conn.cursor()
     
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    users = pagination.items
+    # Get total count with search
+    if search:
+        c.execute('''
+            SELECT COUNT(*) as total FROM users 
+            WHERE username LIKE ? OR name LIKE ?
+        ''', (f'%{search}%', f'%{search}%'))
+    else:
+        c.execute('SELECT COUNT(*) as total FROM users')
+    
+    total = c.fetchone()['total']
+    pages = (total + per_page - 1) // per_page
+    offset = (page - 1) * per_page
+    
+    # Get users with pagination
+    if search:
+        c.execute('''
+            SELECT * FROM users 
+            WHERE username LIKE ? OR name LIKE ?
+            ORDER BY id DESC LIMIT ? OFFSET ?
+        ''', (f'%{search}%', f'%{search}%', per_page, offset))
+    else:
+        c.execute('SELECT * FROM users ORDER BY id DESC LIMIT ? OFFSET ?', (per_page, offset))
+    
+    users = c.fetchall()
+    conn.close()
     
     return jsonify({
-        'users': [user.to_dict() for user in users],
-        'total': pagination.total,
-        'pages': pagination.pages,
+        'users': [user_to_dict(user) for user in users],
+        'total': total,
+        'pages': pages,
         'current_page': page
     }), 200
 
 @admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
 @admin_required
 def delete_user(user_id):
-    user = User.query.get(user_id)
+    user = db.get_user_by_id(user_id)
     if not user:
         return jsonify({'error': '用户不存在'}), 404
     
-    if user.is_admin:
+    if user['is_admin']:
         return jsonify({'error': '不能删除管理员账户'}), 400
     
     try:
-        db.session.delete(user)
-        db.session.commit()
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('DELETE FROM users WHERE id = ?', (user_id,))
         return jsonify({'message': '用户删除成功'}), 200
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': '删除失败'}), 500
 
 @admin_bp.route('/users/<int:user_id>/password', methods=['PUT'])
 @admin_required
 def reset_user_password(user_id):
-    user = User.query.get(user_id)
+    user = db.get_user_by_id(user_id)
     if not user:
         return jsonify({'error': '用户不存在'}), 404
     
@@ -68,13 +177,13 @@ def reset_user_password(user_id):
     if len(new_password) < 6:
         return jsonify({'error': '密码长度不能少于6位'}), 400
     
-    user.set_password(new_password)
-    
     try:
-        db.session.commit()
+        password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('UPDATE users SET password_hash = ? WHERE id = ?', (password_hash, user_id))
         return jsonify({'message': '密码重置成功'}), 200
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': '密码重置失败'}), 500
 
 @admin_bp.route('/users', methods=['POST'])
@@ -98,831 +207,425 @@ def create_user():
     if len(password) < 6:
         return jsonify({'error': '密码长度不能少于6位'}), 400
     
-    if User.query.filter_by(username=username).first():
+    if db.get_user_by_username(username):
         return jsonify({'error': '用户名已存在'}), 409
     
     try:
-        user = User(username=username, name=name)
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        
-        return jsonify({
-            'message': '用户创建成功',
-            'user': user.to_dict()
-        }), 201
+        user_id = db.create_user(username, password, name)
+        return jsonify({'message': '用户创建成功', 'user_id': user_id}), 201
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': '用户创建失败'}), 500
 
 @admin_bp.route('/users/import', methods=['POST'])
 @admin_required
 def import_users():
     if 'file' not in request.files:
-        return jsonify({'error': '没有上传文件'}), 400
+        return jsonify({'error': '没有文件被上传'}), 400
     
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': '没有选择文件'}), 400
     
-    if not file.filename.lower().endswith('.csv'):
+    if not file.filename.endswith('.csv'):
         return jsonify({'error': '只支持CSV文件'}), 400
     
     try:
-        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-        csv_input = pd.read_csv(stream)
+        df = pd.read_csv(io.StringIO(file.read().decode('utf-8')))
         
-        required_columns = ['name', 'username', 'password']
-        if not all(col in csv_input.columns for col in required_columns):
-            return jsonify({'error': f'CSV文件必须包含以下列: {", ".join(required_columns)}'}), 400
+        required_columns = ['username', 'name', 'password']
+        if not all(col in df.columns for col in required_columns):
+            return jsonify({'error': 'CSV文件必须包含username、name和password列'}), 400
         
-        created_count = 0
-        skipped_count = 0
+        success_count = 0
+        error_count = 0
         errors = []
         
-        for index, row in csv_input.iterrows():
-            try:
-                username = str(row['username']).strip()
-                password = str(row['password']).strip()
-                name = str(row['name']).strip()
-                
-                if not username or not password or not name:
-                    errors.append(f'第{index + 2}行: 用户名、密码和姓名不能为空')
-                    continue
-                
-                if User.query.filter_by(username=username).first():
-                    skipped_count += 1
-                    continue
-                
-                if len(password) < 6:
-                    errors.append(f'第{index + 2}行: 密码长度不能少于6位')
-                    continue
-                
-                user = User(username=username, name=name)
-                user.set_password(password)
-                db.session.add(user)
-                created_count += 1
-                
-            except Exception as e:
-                errors.append(f'第{index + 2}行: {str(e)}')
-        
-        try:
-            db.session.commit()
-            return jsonify({
-                'message': '用户导入完成',
-                'created_count': created_count,
-                'skipped_count': skipped_count,
-                'errors': errors
-            }), 200
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': '数据库保存失败'}), 500
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
             
+            for index, row in df.iterrows():
+                try:
+                    username = str(row['username']).strip()
+                    name = str(row['name']).strip()
+                    password = str(row['password']).strip()
+                    
+                    # Check if user exists
+                    c.execute('SELECT id FROM users WHERE username = ?', (username,))
+                    if c.fetchone():
+                        error_count += 1
+                        errors.append(f"第{index+2}行: 用户名 {username} 已存在")
+                        continue
+                    
+                    # Create user
+                    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                    c.execute(
+                        'INSERT INTO users (username, password_hash, name) VALUES (?, ?, ?)',
+                        (username, password_hash, name)
+                    )
+                    success_count += 1
+                    
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f"第{index+2}行: {str(e)}")
+        
+        return jsonify({
+            'message': f'导入完成：成功 {success_count} 个，失败 {error_count} 个',
+            'success_count': success_count,
+            'error_count': error_count,
+            'errors': errors[:10]  # 只返回前10个错误
+        }), 200
+        
     except Exception as e:
         return jsonify({'error': f'文件处理失败: {str(e)}'}), 500
+
+@admin_bp.route('/lottery/settings', methods=['GET'])
+@admin_required
+def get_lottery_settings():
+    lottery = db.get_active_lottery()
+    
+    if lottery:
+        return jsonify({
+            'lottery': lottery_setting_to_dict(lottery)
+        }), 200
+    
+    return jsonify({'lottery': None}), 200
+
+@admin_bp.route('/lottery/settings', methods=['POST'])
+@admin_required
+def create_lottery_setting():
+    data = request.get_json()
+    
+    if not data or not all(key in data for key in ['lottery_name', 'lottery_time', 'room_type']):
+        return jsonify({'error': '抽签名称、抽签时间和房间类型不能为空'}), 400
+    
+    try:
+        lottery_id = db.create_lottery(
+            data['lottery_name'],
+            data['lottery_time'],
+            data['room_type']
+        )
+        return jsonify({'message': '抽签设置创建成功', 'lottery_id': lottery_id}), 201
+    except Exception as e:
+        return jsonify({'error': '创建失败'}), 500
+
+@admin_bp.route('/lottery/results', methods=['GET'])
+@admin_required
+def get_lottery_results():
+    lottery = db.get_active_lottery()
+    if not lottery:
+        return jsonify({'error': '没有活动的抽签'}), 404
+    
+    results = db.get_lottery_results(lottery['id'])
+    
+    return jsonify({
+        'results': [lottery_result_to_dict(r) for r in results],
+        'lottery': lottery_setting_to_dict(lottery)
+    }), 200
+
+@admin_bp.route('/lottery/generate', methods=['POST'])
+@admin_required
+def generate_lottery_results():
+    lottery = db.get_active_lottery()
+    if not lottery:
+        return jsonify({'error': '没有活动的抽签'}), 404
+    
+    if lottery['is_published']:
+        return jsonify({'error': '抽签结果已发布，不能重新生成'}), 400
+    
+    try:
+        # Get all non-admin users
+        conn = db.get_db()
+        c = conn.cursor()
+        c.execute('SELECT id FROM users WHERE is_admin = 0')
+        users = c.fetchall()
+        conn.close()
+        
+        # Shuffle users
+        user_ids = [u['id'] for u in users]
+        random.shuffle(user_ids)
+        
+        # Save results
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            # Clear existing results
+            c.execute('DELETE FROM lottery_results WHERE lottery_id = ?', (lottery['id'],))
+            
+            # Insert new results
+            for i, user_id in enumerate(user_ids):
+                group_number = (i // 4) + 1 if lottery['room_type'] == '4' else (i // 8) + 1
+                db.save_lottery_result(user_id, lottery['id'], i + 1, group_number)
+        
+        return jsonify({'message': '抽签结果生成成功', 'total': len(users)}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'生成失败: {str(e)}'}), 500
+
+@admin_bp.route('/lottery/publish', methods=['POST'])
+@admin_required
+def publish_lottery_results():
+    lottery = db.get_active_lottery()
+    if not lottery:
+        return jsonify({'error': '没有活动的抽签'}), 404
+    
+    try:
+        db.publish_lottery(lottery['id'])
+        return jsonify({'message': '抽签结果已发布'}), 200
+    except Exception as e:
+        return jsonify({'error': '发布失败'}), 500
 
 @admin_bp.route('/buildings', methods=['GET'])
 @admin_required
 def get_buildings():
-    buildings = Building.query.all()
+    buildings = db.get_all_buildings()
     return jsonify({
-        'buildings': [building.to_dict() for building in buildings]
+        'buildings': [building_to_dict(b) for b in buildings]
     }), 200
 
 @admin_bp.route('/buildings', methods=['POST'])
 @admin_required
 def create_building():
     data = request.get_json()
-    if not data or not data.get('name'):
-        return jsonify({'error': '建筑名称不能为空'}), 400
     
-    building = Building(
-        name=data.get('name'),
-        description=data.get('description', '')
-    )
+    if not data or not data.get('name'):
+        return jsonify({'error': '楼栋名称不能为空'}), 400
     
     try:
-        db.session.add(building)
-        db.session.commit()
-        return jsonify({
-            'message': '建筑创建成功',
-            'building': building.to_dict()
-        }), 201
+        building_id = db.create_building(data['name'], data.get('description'))
+        return jsonify({'message': '楼栋创建成功', 'building_id': building_id}), 201
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': '创建失败'}), 500
 
-@admin_bp.route('/buildings/<int:building_id>', methods=['DELETE'])
+@admin_bp.route('/buildings/<int:building_id>/rooms', methods=['GET'])
 @admin_required
-def delete_building(building_id):
-    building = Building.query.get(building_id)
-    if not building:
-        return jsonify({'error': '建筑不存在'}), 404
-    
-    # 检查是否有房间关联
-    rooms = Room.query.filter_by(building_id=building_id).first()
-    if rooms:
-        return jsonify({'error': '该建筑下还有房间，无法删除。请先删除所有房间。'}), 400
-    
-    try:
-        db.session.delete(building)
-        db.session.commit()
-        return jsonify({'message': '建筑删除成功'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': '删除失败'}), 500
-
-@admin_bp.route('/rooms', methods=['GET'])
-@admin_required
-def get_rooms():
-    building_id = request.args.get('building_id', type=int)
-    room_type = request.args.get('room_type')
-    
-    query = Room.query
-    if building_id:
-        query = query.filter_by(building_id=building_id)
-    if room_type:
-        query = query.filter_by(room_type=room_type)
-    
-    rooms = query.all()
+def get_building_rooms(building_id):
+    rooms = db.get_rooms_by_building(building_id)
     return jsonify({
-        'rooms': [room.to_dict() for room in rooms]
+        'rooms': [room_to_dict(r) for r in rooms]
     }), 200
 
 @admin_bp.route('/rooms', methods=['POST'])
 @admin_required
 def create_room():
     data = request.get_json()
+    
     required_fields = ['building_id', 'room_number', 'room_type', 'max_capacity']
-    
     if not data or not all(field in data for field in required_fields):
-        return jsonify({'error': '缺少必要字段'}), 400
-    
-    building = Building.query.get(data['building_id'])
-    if not building:
-        return jsonify({'error': '建筑不存在'}), 404
-    
-    if Room.query.filter_by(building_id=data['building_id'], room_number=data['room_number']).first():
-        return jsonify({'error': '房间号已存在'}), 409
-    
-    room = Room(
-        building_id=data['building_id'],
-        room_number=data['room_number'],
-        room_type=data['room_type'],
-        max_capacity=data['max_capacity']
-    )
+        return jsonify({'error': '楼栋、房间号、房间类型和最大容量不能为空'}), 400
     
     try:
-        db.session.add(room)
-        db.session.flush()
-        
-        for i in range(1, data['max_capacity'] + 1):
-            bed = Bed(room_id=room.id, bed_number=str(i))
-            db.session.add(bed)
-        
-        db.session.commit()
-        return jsonify({
-            'message': '房间创建成功',
-            'room': room.to_dict()
-        }), 201
+        room_id = db.create_room(
+            data['building_id'],
+            data['room_number'],
+            data['room_type'],
+            data['max_capacity']
+        )
+        return jsonify({'message': '房间创建成功', 'room_id': room_id}), 201
     except Exception as e:
-        db.session.rollback()
+        if 'UNIQUE constraint failed' in str(e):
+            return jsonify({'error': '该楼栋已存在相同房间号'}), 409
         return jsonify({'error': '创建失败'}), 500
 
-@admin_bp.route('/rooms/import', methods=['POST'])
+@admin_bp.route('/rooms/<int:room_id>', methods=['GET'])
 @admin_required
-def import_rooms():
-    if 'file' not in request.files:
-        return jsonify({'error': '没有上传文件'}), 400
+def get_room_detail(room_id):
+    room = db.get_room_with_beds(room_id)
+    if not room:
+        return jsonify({'error': '房间不存在'}), 404
     
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({'error': '没有选择文件'}), 400
-    
-    if not file.filename.lower().endswith('.csv'):
-        return jsonify({'error': '只支持CSV文件'}), 400
-    
-    try:
-        stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
-        csv_input = pd.read_csv(stream)
-        
-        required_columns = ['building_name', 'room_number', 'room_type', 'max_capacity']
-        if not all(col in csv_input.columns for col in required_columns):
-            return jsonify({'error': f'CSV文件必须包含以下列: {", ".join(required_columns)}'}), 400
-        
-        created_count = 0
-        skipped_count = 0
-        errors = []
-        
-        for index, row in csv_input.iterrows():
-            try:
-                building_name = str(row['building_name']).strip()
-                room_number = str(row['room_number']).strip()
-                room_type = str(row['room_type']).strip()
-                max_capacity = int(row['max_capacity'])
-                
-                if not building_name or not room_number or not room_type:
-                    errors.append(f'第{index + 2}行: 建筑名称、房间号和房间类型不能为空')
-                    continue
-                
-                if room_type not in ['4', '8']:
-                    errors.append(f'第{index + 2}行: 房间类型只能是4或8')
-                    continue
-                
-                if max_capacity < 1 or max_capacity > 8:
-                    errors.append(f'第{index + 2}行: 最大容量必须在1-8之间')
-                    continue
-                
-                # 查找建筑
-                building = Building.query.filter_by(name=building_name).first()
-                if not building:
-                    errors.append(f'第{index + 2}行: 建筑"{building_name}"不存在')
-                    continue
-                
-                # 检查房间是否已存在
-                if Room.query.filter_by(building_id=building.id, room_number=room_number).first():
-                    skipped_count += 1
-                    continue
-                
-                # 创建房间
-                room = Room(
-                    building_id=building.id,
-                    room_number=room_number,
-                    room_type=room_type,
-                    max_capacity=max_capacity
-                )
-                
-                db.session.add(room)
-                db.session.flush()  # 获取room.id
-                
-                # 为房间创建床位
-                for i in range(1, max_capacity + 1):
-                    bed = Bed(room_id=room.id, bed_number=str(i))
-                    db.session.add(bed)
-                
-                created_count += 1
-                
-            except ValueError as e:
-                errors.append(f'第{index + 2}行: 数据格式错误 - {str(e)}')
-            except Exception as e:
-                errors.append(f'第{index + 2}行: {str(e)}')
-        
-        try:
-            db.session.commit()
-            return jsonify({
-                'message': '房间导入完成',
-                'created_count': created_count,
-                'skipped_count': skipped_count,
-                'errors': errors
-            }), 200
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({'error': '数据库保存失败'}), 500
-            
-    except Exception as e:
-        return jsonify({'error': f'文件处理失败: {str(e)}'}), 500
+    return jsonify({'room': room}), 200
 
 @admin_bp.route('/allocations', methods=['GET'])
 @admin_required
 def get_allocations():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
+    conn = db.get_db()
+    c = conn.cursor()
     
-    pagination = RoomSelection.query.paginate(page=page, per_page=per_page, error_out=False)
-    allocations = pagination.items
+    c.execute('''
+        SELECT rs.*, u.name as user_name, u.username as user_username,
+               r.room_number, b.name as building_name, bd.bed_number
+        FROM room_selections rs
+        JOIN users u ON rs.user_id = u.id
+        JOIN rooms r ON rs.room_id = r.id
+        JOIN buildings b ON r.building_id = b.id
+        JOIN beds bd ON rs.bed_id = bd.id
+        ORDER BY rs.selected_at DESC
+    ''')
+    
+    allocations = c.fetchall()
+    conn.close()
     
     return jsonify({
-        'allocations': [allocation.to_dict() for allocation in allocations],
-        'total': pagination.total,
-        'pages': pagination.pages,
-        'current_page': page
+        'allocations': [allocation_to_dict(a) for a in allocations]
     }), 200
+
+@admin_bp.route('/allocations/<int:user_id>', methods=['DELETE'])
+@admin_required
+def delete_allocation(user_id):
+    current_user_id = get_jwt_identity()
+    
+    try:
+        selection = db.get_user_room_selection(user_id)
+        if not selection:
+            return jsonify({'error': '用户没有分配记录'}), 404
+        
+        # Save to history
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('''
+                INSERT INTO allocation_history (user_id, room_id, bed_id, action, operated_by, notes)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (user_id, selection['room_id'], selection['bed_id'], '取消分配', current_user_id, '管理员取消分配'))
+        
+        # Cancel selection
+        db.cancel_room_selection(user_id)
+        
+        return jsonify({'message': '分配已取消'}), 200
+    except Exception as e:
+        return jsonify({'error': '取消失败'}), 500
 
 @admin_bp.route('/room-type-allocations', methods=['GET'])
 @admin_required
 def get_room_type_allocations():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    search = request.args.get('search', '')
-    
-    query = RoomTypeAllocation.query
-    if search:
-        query = query.join(User).filter(
-            db.or_(
-                User.username.ilike(f'%{search}%'),
-                User.name.ilike(f'%{search}%')
-            )
-        )
-    
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    allocations = pagination.items
-    
+    allocations = db.get_room_type_allocations()
     return jsonify({
-        'allocations': [allocation.to_dict() for allocation in allocations],
-        'total': pagination.total,
-        'pages': pagination.pages,
-        'current_page': page
+        'allocations': [room_type_allocation_to_dict(a) for a in allocations]
     }), 200
 
 @admin_bp.route('/room-type-allocations', methods=['POST'])
 @admin_required
 def create_room_type_allocation():
     data = request.get_json()
-    if not data:
-        return jsonify({'error': '请求数据不能为空'}), 400
+    current_user_id = get_jwt_identity()
     
     required_fields = ['user_id', 'room_type']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': '缺少必要字段'}), 400
+    if not data or not all(field in data for field in required_fields):
+        return jsonify({'error': '用户ID和房间类型不能为空'}), 400
     
-    user_id = data.get('user_id')
-    room_type = data.get('room_type')
-    notes = data.get('notes', '')
-    
-    # 验证用户存在且不是管理员
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({'error': '用户不存在'}), 404
-    
-    if user.is_admin:
-        return jsonify({'error': '不能为管理员分配寝室类型'}), 400
-    
-    # 验证房间类型
-    if room_type not in ['4', '8']:
-        return jsonify({'error': '房间类型只能是4或8'}), 400
-    
-    # 检查用户是否已有分配
-    existing_allocation = RoomTypeAllocation.query.filter_by(user_id=user_id).first()
-    if existing_allocation:
-        return jsonify({'error': '用户已有寝室类型分配'}), 409
-    
-    current_user_id = get_jwt_identity()
+    if data['room_type'] not in ['4', '8']:
+        return jsonify({'error': '房间类型必须是4或8'}), 400
     
     try:
-        # 创建寝室类型分配记录
-        allocation = RoomTypeAllocation(
-            user_id=user_id,
-            room_type=room_type,
-            allocated_by=current_user_id,
-            notes=notes
+        db.allocate_room_type(
+            data['user_id'],
+            data['room_type'],
+            current_user_id,
+            data.get('notes')
         )
-        
-        db.session.add(allocation)
-        db.session.commit()
-        
-        return jsonify({
-            'message': '寝室类型分配成功',
-            'allocation': allocation.to_dict()
-        }), 201
+        return jsonify({'message': '房间类型分配成功'}), 201
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': '分配失败'}), 500
 
-@admin_bp.route('/room-type-allocations/<int:allocation_id>', methods=['PUT'])
+@admin_bp.route('/room-type-allocations/import', methods=['POST'])
 @admin_required
-def update_room_type_allocation(allocation_id):
-    allocation = RoomTypeAllocation.query.get(allocation_id)
-    if not allocation:
-        return jsonify({'error': '分配记录不存在'}), 404
+def import_room_type_allocations():
+    if 'file' not in request.files:
+        return jsonify({'error': '没有文件被上传'}), 400
     
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': '请求数据不能为空'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': '没有选择文件'}), 400
+    
+    if not file.filename.endswith('.csv'):
+        return jsonify({'error': '只支持CSV文件'}), 400
+    
+    current_user_id = get_jwt_identity()
     
     try:
-        if 'room_type' in data:
-            if data['room_type'] not in ['4', '8']:
-                return jsonify({'error': '房间类型只能是4或8'}), 400
-            allocation.room_type = data['room_type']
+        df = pd.read_csv(io.StringIO(file.read().decode('utf-8')))
         
-        if 'notes' in data:
-            allocation.notes = data['notes']
+        required_columns = ['username', 'room_type']
+        if not all(col in df.columns for col in required_columns):
+            return jsonify({'error': 'CSV文件必须包含username和room_type列'}), 400
         
-        allocation.allocated_by = get_jwt_identity()
-        allocation.allocated_at = datetime.utcnow()
+        success_count = 0
+        error_count = 0
+        errors = []
         
-        db.session.commit()
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            for index, row in df.iterrows():
+                try:
+                    username = str(row['username']).strip()
+                    room_type = str(row['room_type']).strip()
+                    
+                    if room_type not in ['4', '8']:
+                        error_count += 1
+                        errors.append(f"第{index+2}行: 房间类型必须是4或8")
+                        continue
+                    
+                    # Get user by username
+                    c.execute('SELECT id FROM users WHERE username = ?', (username,))
+                    user = c.fetchone()
+                    if not user:
+                        error_count += 1
+                        errors.append(f"第{index+2}行: 用户名 {username} 不存在")
+                        continue
+                    
+                    # Allocate room type
+                    notes = row.get('notes', '') if 'notes' in df.columns else None
+                    db.allocate_room_type(user['id'], room_type, current_user_id, notes)
+                    success_count += 1
+                    
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f"第{index+2}行: {str(e)}")
         
         return jsonify({
-            'message': '寝室类型分配更新成功',
-            'allocation': allocation.to_dict()
+            'message': f'导入完成：成功 {success_count} 个，失败 {error_count} 个',
+            'success_count': success_count,
+            'error_count': error_count,
+            'errors': errors[:10]
         }), 200
+        
     except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': '更新失败'}), 500
+        return jsonify({'error': f'文件处理失败: {str(e)}'}), 500
 
-@admin_bp.route('/room-type-allocations/<int:allocation_id>', methods=['DELETE'])
+@admin_bp.route('/statistics', methods=['GET'])
 @admin_required
-def delete_room_type_allocation(allocation_id):
-    allocation = RoomTypeAllocation.query.get(allocation_id)
-    if not allocation:
-        return jsonify({'error': '分配记录不存在'}), 404
+def get_statistics():
+    stats = db.get_room_statistics()
     
-    try:
-        db.session.delete(allocation)
-        db.session.commit()
-        
-        return jsonify({'message': '寝室类型分配删除成功'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': '删除失败'}), 500
-
-@admin_bp.route('/unallocated-room-type-users', methods=['GET'])
-@admin_required
-def get_unallocated_room_type_users():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    search = request.args.get('search', '')
+    conn = db.get_db()
+    c = conn.cursor()
     
-    # 获取已分配寝室类型的用户ID
-    allocated_user_ids = db.session.query(RoomTypeAllocation.user_id).subquery()
+    # Total users
+    c.execute('SELECT COUNT(*) as total FROM users WHERE is_admin = 0')
+    stats['total_users'] = c.fetchone()['total']
     
-    # 查询未分配寝室类型的非管理员用户
-    query = User.query.filter(
-        User.is_admin == False,
-        ~User.id.in_(allocated_user_ids)
-    )
+    # Total buildings and rooms
+    c.execute('SELECT COUNT(*) as total FROM buildings')
+    stats['total_buildings'] = c.fetchone()['total']
     
-    if search:
-        query = query.filter(
-            db.or_(
-                User.username.ilike(f'%{search}%'),
-                User.name.ilike(f'%{search}%')
-            )
-        )
+    c.execute('SELECT COUNT(*) as total FROM rooms')
+    stats['total_rooms'] = c.fetchone()['total']
     
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    users = pagination.items
+    conn.close()
     
-    return jsonify({
-        'users': [user.to_dict() for user in users],
-        'total': pagination.total,
-        'pages': pagination.pages,
-        'current_page': page
-    }), 200
-
-@admin_bp.route('/allocations', methods=['POST'])
-@admin_required
-def create_allocation():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': '请求数据不能为空'}), 400
-    
-    required_fields = ['user_id', 'room_id', 'bed_id']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': '缺少必要字段'}), 400
-    
-    user_id = data.get('user_id')
-    room_id = data.get('room_id')
-    bed_id = data.get('bed_id')
-    
-    # 验证用户存在且不是管理员
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({'error': '用户不存在'}), 404
-    
-    if user.is_admin:
-        return jsonify({'error': '不能为管理员分配宿舍'}), 400
-    
-    # 验证房间和床位存在
-    room = Room.query.get(room_id)
-    bed = Bed.query.get(bed_id)
-    
-    if not room or not bed:
-        return jsonify({'error': '房间或床位不存在'}), 404
-    
-    if bed.room_id != room.id:
-        return jsonify({'error': '床位不属于指定房间'}), 400
-    
-    # 检查用户寝室类型分配
-    room_type_allocation = RoomTypeAllocation.query.filter_by(user_id=user_id).first()
-    if room_type_allocation and room_type_allocation.room_type != room.room_type:
-        return jsonify({'error': f'用户被分配到{room_type_allocation.room_type}人间，不能分配到{room.room_type}人间'}), 400
-    
-    # 检查用户是否已有分配
-    existing_allocation = RoomSelection.query.filter_by(user_id=user_id).first()
-    if existing_allocation:
-        return jsonify({'error': '用户已有宿舍分配'}), 409
-    
-    # 检查床位是否被占用
-    if bed.is_occupied:
-        return jsonify({'error': '床位已被占用'}), 409
-    
-    current_user_id = get_jwt_identity()
-    
-    try:
-        # 创建分配记录
-        allocation = RoomSelection(
-            user_id=user_id,
-            room_id=room_id,
-            bed_id=bed_id,
-            is_confirmed=True  # 管理员分配默认确认
-        )
-        
-        # 标记床位为占用
-        bed.is_occupied = True
-        
-        # 更新房间入住数量
-        room.current_occupancy += 1
-        
-        # 记录分配历史
-        history = AllocationHistory(
-            user_id=user_id,
-            room_id=room_id,
-            bed_id=bed_id,
-            action='assigned',
-            operated_by=current_user_id,
-            notes='管理员手动分配'
-        )
-        
-        db.session.add(allocation)
-        db.session.add(history)
-        db.session.commit()
-        
-        return jsonify({
-            'message': '宿舍分配成功',
-            'allocation': allocation.to_dict()
-        }), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': '分配失败'}), 500
-
-@admin_bp.route('/unallocated-users', methods=['GET'])
-@admin_required
-def get_unallocated_users():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    search = request.args.get('search', '')
-    
-    # 获取已分配宿舍的用户ID
-    allocated_user_ids = db.session.query(RoomSelection.user_id).subquery()
-    
-    # 查询未分配宿舍的非管理员用户
-    query = User.query.filter(
-        User.is_admin == False,
-        ~User.id.in_(allocated_user_ids)
-    )
-    
-    if search:
-        query = query.filter(
-            db.or_(
-                User.username.ilike(f'%{search}%'),
-                User.name.ilike(f'%{search}%')
-            )
-        )
-    
-    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
-    users = pagination.items
-    
-    return jsonify({
-        'users': [user.to_dict() for user in users],
-        'total': pagination.total,
-        'pages': pagination.pages,
-        'current_page': page
-    }), 200
-
-@admin_bp.route('/allocations/<int:allocation_id>', methods=['PUT'])
-@admin_required
-def update_allocation(allocation_id):
-    allocation = RoomSelection.query.get(allocation_id)
-    if not allocation:
-        return jsonify({'error': '分配记录不存在'}), 404
-    
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': '请求数据不能为空'}), 400
-    
-    current_user_id = get_jwt_identity()
-    
-    try:
-        if 'room_id' in data and 'bed_id' in data:
-            new_room = Room.query.get(data['room_id'])
-            new_bed = Bed.query.get(data['bed_id'])
-            
-            if not new_room or not new_bed:
-                return jsonify({'error': '房间或床位不存在'}), 404
-            
-            if new_bed.room_id != new_room.id:
-                return jsonify({'error': '床位不属于指定房间'}), 400
-            
-            if new_bed.is_occupied and new_bed.id != allocation.bed_id:
-                return jsonify({'error': '床位已被占用'}), 409
-            
-            old_bed = Bed.query.get(allocation.bed_id)
-            if old_bed:
-                old_bed.is_occupied = False
-            
-            new_bed.is_occupied = True
-            allocation.room_id = data['room_id']
-            allocation.bed_id = data['bed_id']
-            
-            history = AllocationHistory(
-                user_id=allocation.user_id,
-                room_id=data['room_id'],
-                bed_id=data['bed_id'],
-                action='modified',
-                operated_by=current_user_id,
-                notes=data.get('notes', '管理员修改分配')
-            )
-            db.session.add(history)
-        
-        if 'is_confirmed' in data:
-            allocation.is_confirmed = data['is_confirmed']
-        
-        db.session.commit()
-        return jsonify({
-            'message': '分配更新成功',
-            'allocation': allocation.to_dict()
-        }), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': '更新失败'}), 500
-
-@admin_bp.route('/allocations/<int:allocation_id>', methods=['DELETE'])
-@admin_required
-def delete_allocation(allocation_id):
-    allocation = RoomSelection.query.get(allocation_id)
-    if not allocation:
-        return jsonify({'error': '分配记录不存在'}), 404
-    
-    current_user_id = get_jwt_identity()
-    
-    try:
-        bed = Bed.query.get(allocation.bed_id)
-        if bed:
-            bed.is_occupied = False
-        
-        history = AllocationHistory(
-            user_id=allocation.user_id,
-            room_id=allocation.room_id,
-            bed_id=allocation.bed_id,
-            action='removed',
-            operated_by=current_user_id,
-            notes='管理员删除分配'
-        )
-        db.session.add(history)
-        db.session.delete(allocation)
-        db.session.commit()
-        
-        return jsonify({'message': '分配删除成功'}), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': '删除失败'}), 500
+    return jsonify({'statistics': stats}), 200
 
 @admin_bp.route('/allocation-history', methods=['GET'])
 @admin_required
 def get_allocation_history():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
+    conn = db.get_db()
+    c = conn.cursor()
     
-    pagination = AllocationHistory.query.order_by(AllocationHistory.operated_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    history = pagination.items
+    c.execute('''
+        SELECT ah.*, u.name as user_name, op.name as operator_name,
+               b.name as building_name, r.room_number, bd.bed_number
+        FROM allocation_history ah
+        JOIN users u ON ah.user_id = u.id
+        LEFT JOIN users op ON ah.operated_by = op.id
+        JOIN rooms r ON ah.room_id = r.id
+        JOIN buildings b ON r.building_id = b.id
+        JOIN beds bd ON ah.bed_id = bd.id
+        ORDER BY ah.operated_at DESC
+        LIMIT 100
+    ''')
     
-    return jsonify({
-        'history': [record.to_dict() for record in history],
-        'total': pagination.total,
-        'pages': pagination.pages,
-        'current_page': page
-    }), 200
-
-@admin_bp.route('/lottery/quick-draw', methods=['POST'])
-@admin_required
-def quick_lottery_draw():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': '请求数据不能为空'}), 400
-    
-    required_fields = ['lottery_name', 'room_type']
-    if not all(field in data for field in required_fields):
-        return jsonify({'error': '缺少必要字段'}), 400
-    
-    if data['room_type'] not in ['4', '8']:
-        return jsonify({'error': '房间类型只能是4或8'}), 400
-    
-    try:
-        # 检查是否有可参与抽签的用户
-        users = User.query.filter_by(is_admin=False).all()
-        if not users:
-            return jsonify({'error': '没有可参与抽签的用户'}), 400
-        
-        # 创建抽签设置
-        setting = LotterySetting(
-            lottery_name=data['lottery_name'],
-            lottery_time=datetime.utcnow(),
-            room_type=data['room_type'],
-            is_published=False  # 默认不发布，等待管理员确认
-        )
-        
-        db.session.add(setting)
-        db.session.flush()  # 获取setting的id
-        
-        # 生成抽签结果
-        user_ids = [user.id for user in users]
-        import random
-        random.shuffle(user_ids)
-        
-        lottery_results = []
-        group_size = 4 if setting.room_type == '4' else 8
-        
-        for i, user_id in enumerate(user_ids):
-            result = LotteryResult(
-                user_id=user_id,
-                lottery_id=setting.id,
-                lottery_number=i + 1,
-                group_number=(i // group_size) + 1
-            )
-            lottery_results.append(result)
-        
-        db.session.add_all(lottery_results)
-        db.session.commit()
-        
-        return jsonify({
-            'message': '抽签结果生成成功',
-            'lottery_id': setting.id,
-            'lottery_name': setting.lottery_name,
-            'total_participants': len(users),
-            'total_groups': (len(users) - 1) // group_size + 1,
-            'results': [result.to_dict() for result in lottery_results]
-        }), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': f'抽签失败: {str(e)}'}), 500
-
-@admin_bp.route('/lottery/<int:lottery_id>/publish', methods=['POST'])
-@admin_required
-def publish_lottery_results(lottery_id):
-    setting = LotterySetting.query.get(lottery_id)
-    if not setting:
-        return jsonify({'error': '抽签不存在'}), 404
-    
-    if setting.is_published:
-        return jsonify({'error': '抽签结果已经发布'}), 400
-    
-    try:
-        setting.is_published = True
-        db.session.commit()
-        
-        return jsonify({
-            'message': '抽签结果发布成功',
-            'lottery_id': lottery_id
-        }), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': '发布失败'}), 500
-
-@admin_bp.route('/lottery/<int:lottery_id>', methods=['DELETE'])
-@admin_required
-def delete_lottery_results(lottery_id):
-    setting = LotterySetting.query.get(lottery_id)
-    if not setting:
-        return jsonify({'error': '抽签不存在'}), 404
-    
-    if setting.is_published:
-        return jsonify({'error': '已发布的抽签结果不能删除'}), 400
-    
-    try:
-        # 删除抽签结果
-        LotteryResult.query.filter_by(lottery_id=lottery_id).delete()
-        # 删除抽签设置
-        db.session.delete(setting)
-        db.session.commit()
-        
-        return jsonify({
-            'message': '抽签结果删除成功'
-        }), 200
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': '删除失败'}), 500
-
-@admin_bp.route('/lottery/results', methods=['GET'])
-@admin_required
-def get_all_lottery_results():
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 20, type=int)
-    lottery_id = request.args.get('lottery_id', type=int)
-    
-    query = LotteryResult.query
-    if lottery_id:
-        query = query.filter_by(lottery_id=lottery_id)
-    
-    pagination = query.order_by(LotteryResult.lottery_number).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-    results = pagination.items
-    
-    # 获取抽签设置信息
-    settings = {}
-    if results:
-        setting_ids = list(set(result.lottery_id for result in results))
-        lottery_settings = LotterySetting.query.filter(LotterySetting.id.in_(setting_ids)).all()
-        settings = {setting.id: setting.to_dict() for setting in lottery_settings}
+    history = c.fetchall()
+    conn.close()
     
     return jsonify({
-        'results': [result.to_dict() for result in results],
-        'settings': settings,
-        'total': pagination.total,
-        'pages': pagination.pages,
-        'current_page': page
+        'history': [history_to_dict(h) for h in history]
     }), 200

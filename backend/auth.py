@@ -1,8 +1,7 @@
 from functools import wraps
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
-from werkzeug.security import check_password_hash
-from .models import db, User
+from . import database as db
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
@@ -11,8 +10,8 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         verify_jwt_in_request()
         current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
-        if not user or not user.is_admin:
+        user = db.get_user_by_id(current_user_id)
+        if not user or not user['is_admin']:
             return jsonify({'error': '需要管理员权限'}), 403
         return f(*args, **kwargs)
     return decorated_function
@@ -27,17 +26,23 @@ def login():
     username = data.get('username')
     password = data.get('password')
     
-    user = User.query.filter_by(username=username).first()
+    user = db.get_user_by_username(username)
     
-    if not user or not user.check_password(password):
+    if not user or not db.check_password(user, password):
         return jsonify({'error': '用户名或密码错误'}), 401
     
-    access_token = create_access_token(identity=user.id)
+    access_token = create_access_token(identity=user['id'])
     
     return jsonify({
         'message': '登录成功',
         'access_token': access_token,
-        'user': user.to_dict()
+        'user': {
+            'id': user['id'],
+            'username': user['username'],
+            'name': user['name'],
+            'is_admin': bool(user['is_admin']),
+            'created_at': user['created_at']
+        }
     }), 200
 
 @auth_bp.route('/register', methods=['POST'])
@@ -51,39 +56,42 @@ def register():
     password = data.get('password')
     name = data.get('name')
     
-    if User.query.filter_by(username=username).first():
+    if db.get_user_by_username(username):
         return jsonify({'error': '用户名已存在'}), 409
     
     if len(password) < 6:
         return jsonify({'error': '密码长度不能少于6位'}), 400
     
-    user = User(username=username, name=name)
-    user.set_password(password)
-    
     try:
-        db.session.add(user)
-        db.session.commit()
+        user_id = db.create_user(username, password, name)
         return jsonify({'message': '注册成功'}), 201
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': '注册失败'}), 500
 
 @auth_bp.route('/profile', methods=['GET'])
 @jwt_required()
 def get_profile():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = db.get_user_by_id(current_user_id)
     
     if not user:
         return jsonify({'error': '用户不存在'}), 404
     
-    return jsonify({'user': user.to_dict()}), 200
+    return jsonify({
+        'user': {
+            'id': user['id'],
+            'username': user['username'],
+            'name': user['name'],
+            'is_admin': bool(user['is_admin']),
+            'created_at': user['created_at']
+        }
+    }), 200
 
 @auth_bp.route('/change-password', methods=['POST'])
 @jwt_required()
 def change_password():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = db.get_user_by_id(current_user_id)
     
     if not user:
         return jsonify({'error': '用户不存在'}), 404
@@ -96,31 +104,40 @@ def change_password():
     old_password = data.get('old_password')
     new_password = data.get('new_password')
     
-    if not user.check_password(old_password):
+    if not db.check_password(user, old_password):
         return jsonify({'error': '旧密码错误'}), 400
     
     if len(new_password) < 6:
         return jsonify({'error': '新密码长度不能少于6位'}), 400
     
-    user.set_password(new_password)
-    
     try:
-        db.session.commit()
+        import bcrypt
+        password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('UPDATE users SET password_hash = ? WHERE id = ?', (password_hash, current_user_id))
+        
         return jsonify({'message': '密码修改成功'}), 200
     except Exception as e:
-        db.session.rollback()
         return jsonify({'error': '密码修改失败'}), 500
 
 @auth_bp.route('/verify-token', methods=['GET'])
 @jwt_required()
 def verify_token():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = db.get_user_by_id(current_user_id)
     
     if not user:
         return jsonify({'error': '用户不存在'}), 404
     
     return jsonify({
         'valid': True,
-        'user': user.to_dict()
+        'user': {
+            'id': user['id'],
+            'username': user['username'],
+            'name': user['name'],
+            'is_admin': bool(user['is_admin']),
+            'created_at': user['created_at']
+        }
     }), 200

@@ -1,13 +1,11 @@
 Flask==2.3.3
-Flask-SQLAlchemy==3.0.5
 Flask-Login==0.6.3
 Flask-WTF==1.1.1
 Flask-JWT-Extended==4.5.3
+Flask-CORS==4.0.0
 WTForms==3.0.1
 Werkzeug==2.3.7
-redis==5.0.1
 pandas==2.1.1
 python-dotenv==1.0.0
 bcrypt==4.0.1
 gunicorn==21.2.0
-psycopg2-binary==2.9.7
