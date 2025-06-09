@@ -108,7 +108,7 @@
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button type="button" class="btn btn-outline" onclick="showQuickLotteryModal()">一键抽签</button>
-                        <button type="button" class="btn btn-outline" onclick="showLotteryResultsModal()">查看抽签结果</button>
+                        <button type="button" class="btn btn-outline" onclick="showLotteryResultsModal()">查看所有抽签结果</button>
                     </div>
                 </div>
                 
@@ -244,6 +244,9 @@
             <h3 class="modal-title">一键抽签</h3>
         </div>
         <div class="modal-content">
+            <div class="alert alert-info" style="margin-bottom: 16px; padding: 12px; background-color: #e3f2fd; border-radius: 4px;">
+                <strong>说明：</strong>抽签完成后将保存为草稿，您可以在"查看抽签结果"中进行修改，确认无误后再发布。
+            </div>
             <form id="quickLotteryForm">
                 <div class="form-group">
                     <label class="form-label">抽签名称</label>
@@ -452,7 +455,7 @@
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="hideLotteryConfirmModal()">关闭</button>
             <button type="button" class="btn btn-primary" id="viewEditResultsBtn" onclick="toggleLotteryResultsView()">查看和修改结果</button>
-            <button type="button" class="btn btn-success" id="publishLotteryBtn" onclick="publishCurrentLottery()">发布结果</button>
+            <button type="button" class="btn btn-success" id="saveDraftBtn" onclick="saveCurrentLotteryDraft()">保存草稿</button>
             <button type="button" class="btn btn-error" id="deleteLotteryBtn" onclick="deleteCurrentLottery()">删除重抽</button>
         </div>
     </div>
@@ -1982,12 +1985,12 @@ function showLotteryConfirmDialog(lotteryData) {
             <p><strong>参与人数：</strong>${lotteryData.total_participants || 0}人</p>
             <p><strong>已分配人数：</strong>${lotteryData.allocated_participants || 0}人</p>
         </div>
-        <div class="alert alert-warning">
-            <p>抽签已完成并保存为草稿状态。请选择：</p>
-            <ul>
-                <li><strong>查看和修改结果：</strong>查看详细抽签结果并进行必要的修改</li>
-                <li><strong>发布结果：</strong>学生将可以看到抽签结果</li>
-                <li><strong>删除重抽：</strong>删除此次抽签结果，重新进行抽签</li>
+        <div class="alert alert-warning" style="background-color: #fff3cd; border: 1px solid #ffeeba; padding: 12px; border-radius: 4px;">
+            <p><strong>抽签已完成！</strong>结果已保存为草稿状态。</p>
+            <ul style="margin-bottom: 0;">
+                <li><strong>查看和修改结果：</strong>查看详细抽签结果，可以修改房间类型分配</li>
+                <li><strong>保存草稿：</strong>保存当前结果，稍后在"查看所有抽签结果"中发布</li>
+                <li><strong>删除重抽：</strong>如果对结果不满意，可以删除并重新抽签</li>
             </ul>
         </div>
         <div id="lotteryResultsSection" style="display: none; margin-top: 24px;">
@@ -2151,6 +2154,18 @@ async function confirmEditCurrentLotteryRoomType(resultId) {
     }
 }
 
+async function saveCurrentLotteryDraft() {
+    if (!currentLotteryId) {
+        showAlert('没有待保存的抽签结果', 'error');
+        return;
+    }
+    
+    showAlert('抽签结果已保存为草稿，请在"查看抽签结果"页面进行修改和发布', 'success');
+    hideLotteryConfirmModal();
+    // 切换到分配管理选项卡
+    showTab('allocations', null);
+}
+
 async function publishCurrentLottery() {
     if (!currentLotteryId) {
         showAlert('没有待发布的抽签结果', 'error');
@@ -2233,7 +2248,7 @@ async function loadLotteryResults() {
                         <div>
                             <h4>${setting ? setting.lottery_name : '未知抽签'}</h4>
                             <small>参与人数: ${results.length} | 
-                                   状态: ${setting && setting.is_published ? '已发布' : '草稿'}</small>
+                                   状态: <span style="color: ${setting && setting.is_published ? 'green' : 'orange'}">${setting && setting.is_published ? '已发布' : '草稿（待发布）'}</span></small>
                         </div>
                         <div>
                             ${setting && !setting.is_published ? `
