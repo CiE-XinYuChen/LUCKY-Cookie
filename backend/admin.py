@@ -59,13 +59,14 @@ def room_type_allocation_to_dict(rta):
     return {
         'id': rta['id'],
         'user_id': rta['user_id'],
-        'user_name': rta['user_name'] if 'user_name' in rta.keys() else None,
-        'user_username': rta['username'] if 'username' in rta.keys() else None,
+        'user_name': rta.get('user_name'),
+        'user_username': rta.get('username'),
         'room_type': rta['room_type'],
-        'allocated_by': rta['allocated_by'],
-        'allocator_name': rta['allocator_name'] if 'allocator_name' in rta.keys() else None,
+        'allocated_by': rta.get('allocated_by'),
+        'allocator_name': rta.get('allocator_name'),
         'allocated_at': rta['allocated_at'],
-        'notes': rta['notes']
+        'notes': rta.get('notes'),
+        'allocation_type': rta.get('allocation_type', 'manual')
     }
 
 def lottery_result_to_dict(result):
@@ -725,6 +726,7 @@ def get_room_type_allocations():
             COALESCE(a.name, '抽签系统') as allocator_name,
             COALESCE(rta.notes, '通过抽签获得') as notes,
             COALESCE(rta.id, lr.id) as id,
+            rta.allocated_by as allocated_by,
             CASE WHEN rta.id IS NOT NULL THEN 'manual' ELSE 'lottery' END as allocation_type
         FROM users u
         LEFT JOIN room_type_allocations rta ON u.id = rta.user_id
