@@ -4,25 +4,47 @@
 
 {% block content %}
 <div class="container">
-    <h1>个人中心</h1>
+    <div class="mb-8">
+        <h1 style="margin-bottom: 0.5rem;">个人中心</h1>
+        <p class="text-muted">欢迎使用宿舍抽签系统</p>
+    </div>
     
     <!-- 用户信息卡片 -->
-    <div class="card" style="margin-bottom: 24px;">
-        <div class="card-header">
-            <h3 class="card-title">个人信息</h3>
+    <div class="card animate-slideIn" style="margin-bottom: 1.5rem; border: none;">
+        <div class="card-header" style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border-bottom: none;">
+            <h3 class="card-title" style="color: white; display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                个人信息
+            </h3>
         </div>
         <div class="card-content">
             <div id="userInfo">
                 <!-- 用户信息将通过JavaScript加载 -->
             </div>
-            <button type="button" class="btn btn-outline" onclick="showChangePasswordModal()">修改密码</button>
+            <button type="button" class="btn btn-outline" onclick="showChangePasswordModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+                修改密码
+            </button>
         </div>
     </div>
 
     <!-- 抽签结果卡片 -->
-    <div class="card" style="margin-bottom: 24px;">
+    <div class="card animate-slideIn" style="margin-bottom: 1.5rem; border: none; animation-delay: 0.1s;">
         <div class="card-header">
-            <h3 class="card-title">我的抽签结果</h3>
+            <h3 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <path d="M3 9h18"></path>
+                    <path d="M9 21V9"></path>
+                </svg>
+                我的抽签结果
+            </h3>
         </div>
         <div class="card-content" id="lotteryResults">
             <!-- 抽签结果将通过JavaScript加载 -->
@@ -30,9 +52,15 @@
     </div>
 
     <!-- 宿舍选择卡片 -->
-    <div class="card">
+    <div class="card animate-slideIn" style="border: none; animation-delay: 0.2s;">
         <div class="card-header">
-            <h3 class="card-title">我的宿舍选择</h3>
+            <h3 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                我的宿舍选择
+            </h3>
         </div>
         <div class="card-content" id="roomSelection">
             <!-- 宿舍选择将通过JavaScript加载 -->
@@ -91,15 +119,18 @@ async function loadUserInfo() {
         userData = response.user;
         
         document.getElementById('userInfo').innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                <div>
-                    <strong>姓名：</strong> ${userData.name}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="stat-item" style="border-bottom: none; padding: 0;">
+                    <span class="stat-label">姓名</span>
+                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600;">${userData.name}</span>
                 </div>
-                <div>
-                    <strong>用户名：</strong> ${userData.username}
+                <div class="stat-item" style="border-bottom: none; padding: 0;">
+                    <span class="stat-label">用户名</span>
+                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600;">${userData.username}</span>
                 </div>
-                <div>
-                    <strong>注册时间：</strong> ${formatDate(userData.created_at)}
+                <div class="stat-item" style="border-bottom: none; padding: 0;">
+                    <span class="stat-label">注册时间</span>
+                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600;">${formatDate(userData.created_at)}</span>
                 </div>
             </div>
         `;
@@ -124,11 +155,20 @@ async function loadLotteryResults() {
                 `;
             } else {
                 container.innerHTML = `
-                    <div class="alert alert-warning" style="text-align: center;">
-                        <h4>宿舍抽签</h4>
-                        <p>点击下方按钮参与宿舍抽签，系统将为您随机分配抽签号码</p>
-                        <button type="button" class="btn btn-primary" onclick="participateLottery()" style="font-size: 18px; padding: 12px 24px;">
-                            🎲 点击抽签
+                    <div class="alert alert-info" style="text-align: center; background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg)); border: 1px solid var(--primary-light); padding: 2rem;">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <path d="M3 9h18"></path>
+                            <path d="M9 21V9"></path>
+                        </svg>
+                        <h4 style="color: var(--primary-dark); margin-bottom: 0.5rem;">宿舍抽签</h4>
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">点击下方按钮参与宿舍抽签，系统将为您随机分配抽签号码</p>
+                        <button type="button" class="btn btn-primary" onclick="participateLottery()" style="font-size: 1.125rem; padding: 0.875rem 2rem; box-shadow: var(--shadow-md);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            点击抽签
                         </button>
                     </div>
                 `;
@@ -140,19 +180,31 @@ async function loadLotteryResults() {
         hasLotteryResult = true;
         
         const resultsHtml = response.results.map(result => `
-            <div class="card" style="margin-bottom: 16px;">
-                <div class="card-content">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
-                        <div><strong>抽签号码：</strong> ${result.lottery_number}</div>
-                        <div><strong>分配房间类型：</strong> ${result.room_type ? `${result.room_type}人间` : '未分配'}</div>
-                        <div><strong>抽签时间：</strong> ${formatDate(result.created_at)}</div>
+            <div class="stat-card" style="margin-bottom: 1rem; padding: 1.5rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1rem;">
+                    <div>
+                        <div class="stat-label">抽签号码</div>
+                        <div class="stat-value" style="font-size: 1.5rem; color: var(--primary-color);">#${result.lottery_number}</div>
                     </div>
-                    ${result.room_type ? `
-                        <div class="alert alert-info" style="margin-top: 16px;">
-                            <strong>注意：</strong>您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
-                        </div>
-                    ` : ''}
+                    <div>
+                        <div class="stat-label">分配房间类型</div>
+                        <div class="stat-value" style="font-size: 1.5rem;">${result.room_type ? `${result.room_type}人间` : '未分配'}</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">抽签时间</div>
+                        <div style="font-weight: 600; margin-top: 0.25rem;">${formatDate(result.created_at)}</div>
+                    </div>
                 </div>
+                ${result.room_type ? `
+                    <div class="alert alert-info" style="margin-bottom: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
+                    </div>
+                ` : ''}
             </div>
         `).join('');
         
@@ -167,7 +219,7 @@ async function participateLottery() {
     const originalText = button.innerHTML;
     
     // 显示加载状态
-    button.innerHTML = '🎲 抽签中...';
+    button.innerHTML = '<span class="loading" style="border-color: rgba(255,255,255,0.3); border-top-color: white;"></span> 抽签中...';
     button.disabled = true;
     
     try {
@@ -213,19 +265,52 @@ async function loadRoomSelection() {
         
         const selection = response.selection;
         container.innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
-                <div><strong>楼栋：</strong> ${selection.building_name}</div>
-                <div><strong>房间号：</strong> ${selection.room_number}</div>
-                <div><strong>床位号：</strong> ${selection.bed_number}</div>
-                <div><strong>选择时间：</strong> ${formatDate(selection.selected_at)}</div>
-                <div><strong>确认状态：</strong> ${selection.is_confirmed ? '已确认' : '未确认'}</div>
+            <div class="stat-card" style="padding: 1.5rem; margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem;">
+                    <div>
+                        <div class="stat-label">楼栋</div>
+                        <div class="stat-value" style="font-size: 1.25rem;">${selection.building_name}</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">房间号</div>
+                        <div class="stat-value" style="font-size: 1.25rem;">${selection.room_number}</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">床位号</div>
+                        <div class="stat-value" style="font-size: 1.25rem;">${selection.bed_number}</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">选择时间</div>
+                        <div style="font-weight: 600; margin-top: 0.25rem;">${formatDate(selection.selected_at)}</div>
+                    </div>
+                    <div>
+                        <div class="stat-label">确认状态</div>
+                        <div style="margin-top: 0.25rem;">
+                            ${selection.is_confirmed ? 
+                                '<span class="badge badge-success">已确认</span>' : 
+                                '<span class="badge badge-error">未确认</span>'
+                            }
+                        </div>
+                    </div>
+                </div>
             </div>
             ${!selection.is_confirmed ? `
-                <div style="display: flex; gap: 8px;">
-                    <a href="/room-selection" class="btn btn-outline">修改选择</a>
-                    <button type="button" class="btn btn-success" onclick="confirmSelection()">确认选择</button>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="/room-selection" class="btn btn-outline">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        修改选择
+                    </a>
+                    <button type="button" class="btn btn-success" onclick="confirmSelection()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        确认选择
+                    </button>
                 </div>
-            ` : '<div class="alert alert-success">您的宿舍选择已确认</div>'}
+            ` : '<div class="alert alert-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>您的宿舍选择已确认</div>'}
         `;
     } catch (error) {
         document.getElementById('roomSelection').innerHTML = '<p>加载宿舍选择失败</p>';
@@ -283,21 +368,4 @@ document.getElementById('changePasswordModal').addEventListener('click', functio
 });
 </script>
 
-<style>
-.status-published {
-    color: var(--success-color);
-    font-weight: 500;
-}
-
-.status-draft {
-    color: var(--warning-color);
-    font-weight: 500;
-}
-
-.alert-warning {
-    background-color: #fff3cd;
-    border-color: #ffeaa7;
-    color: #856404;
-}
-</style>
 {% endblock %}

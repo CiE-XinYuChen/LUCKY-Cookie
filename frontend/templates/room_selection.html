@@ -4,12 +4,21 @@
 
 {% block content %}
 <div class="container">
-    <h1>宿舍选择</h1>
+    <div class="mb-8">
+        <h1 style="margin-bottom: 0.5rem;">宿舍选择</h1>
+        <p class="text-muted">选择您喜欢的宿舍房间和床位</p>
+    </div>
     
     <!-- 我的选择状态 -->
-    <div class="card" style="margin-bottom: 24px;">
-        <div class="card-header">
-            <h3 class="card-title">我的选择状态</h3>
+    <div class="card animate-slideIn" style="margin-bottom: 1.5rem; border: none;">
+        <div class="card-header" style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border-bottom: none;">
+            <h3 class="card-title" style="color: white; display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+                我的选择状态
+            </h3>
         </div>
         <div class="card-content" id="mySelection">
             <!-- 我的选择将通过JavaScript加载 -->
@@ -17,27 +26,53 @@
     </div>
 
     <!-- 筛选选项 -->
-    <div class="card" style="margin-bottom: 24px;">
+    <div class="card animate-slideIn" style="margin-bottom: 1.5rem; border: none; animation-delay: 0.1s;">
         <div class="card-header">
-            <h3 class="card-title">筛选条件</h3>
+            <h3 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+                </svg>
+                筛选条件
+            </h3>
         </div>
         <div class="card-content">
-            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-                <select id="buildingFilter" class="form-input" style="width: 200px;" onchange="loadAvailableRooms()">
-                    <option value="">所有建筑</option>
-                </select>
-                <select id="roomTypeFilter" class="form-input" style="width: 150px;" onchange="loadAvailableRooms()">
-                    <!-- 房间类型选项将根据抽签结果动态生成 -->
-                </select>
-                <button type="button" class="btn btn-outline" onclick="loadAvailableRooms()">刷新</button>
+            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <label class="form-label" style="margin-bottom: 0.25rem;">选择楼栋</label>
+                    <select id="buildingFilter" class="form-input" style="width: 200px;" onchange="loadAvailableRooms()">
+                        <option value="">所有建筑</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label" style="margin-bottom: 0.25rem;">房间类型</label>
+                    <select id="roomTypeFilter" class="form-input" style="width: 150px;" onchange="loadAvailableRooms()">
+                        <!-- 房间类型选项将根据抽签结果动态生成 -->
+                    </select>
+                </div>
+                <div style="display: flex; align-items: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="loadAvailableRooms()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M1 20v-6h6"></path>
+                            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                        </svg>
+                        刷新
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- 可用房间列表 -->
-    <div class="card">
+    <div class="card animate-slideIn" style="border: none; animation-delay: 0.2s;">
         <div class="card-header">
-            <h3 class="card-title">可选宿舍</h3>
+            <h3 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                可选宿舍
+            </h3>
         </div>
         <div class="card-content" id="availableRooms">
             <!-- 可用房间将通过JavaScript加载 -->
