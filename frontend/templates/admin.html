@@ -103,8 +103,12 @@
             </div>
             <div class="card-content">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 16px;">
-                    <div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
                         <h4>分配管理</h4>
+                        <span id="autoRefreshIndicator" style="display: none; font-size: 0.875rem; color: var(--success-color); display: flex; align-items: center; gap: 4px;">
+                            <span style="width: 8px; height: 8px; background-color: var(--success-color); border-radius: 50%; animation: pulse 2s infinite;"></span>
+                            自动刷新中 (3秒)
+                        </span>
                     </div>
                     <div style="display: flex; gap: 8px;">
                         <button type="button" class="btn btn-outline" onclick="showQuickLotteryModal()">一键抽签</button>
@@ -595,11 +599,17 @@ let currentEditingRoomId = null;
 let currentEditAllocationId = null;
 let selectedEditBedId = null;
 let isResultsViewVisible = false;
+let autoRefreshInterval = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
     if (!(await requireAdmin())) return;
     
     showTab('users');
+});
+
+// 页面卸载时清理自动刷新
+window.addEventListener('beforeunload', function() {
+    stopAllocationAutoRefresh();
 });
 
 function showTab(tabName, event) {
@@ -621,6 +631,9 @@ function showTab(tabName, event) {
         event.target.className = 'btn btn-primary';
     }
     
+    // 清除之前的自动刷新
+    stopAllocationAutoRefresh();
+    
     currentTab = tabName;
     
     // 加载对应数据
@@ -637,6 +650,7 @@ function showTab(tabName, event) {
             break;
         case 'allocations':
             loadRoomTypeAllocations();
+            startAllocationAutoRefresh();
             break;
         case 'statistics':
             loadStatistics();
@@ -1086,6 +1100,43 @@ async function importRooms() {
 }
 
 // 分配管理相关函数
+function startAllocationAutoRefresh() {
+    // 显示自动刷新指示器
+    const indicator = document.getElementById('autoRefreshIndicator');
+    if (indicator) {
+        indicator.style.display = 'flex';
+    }
+    
+    // 每3秒刷新一次分配管理数据
+    autoRefreshInterval = setInterval(() => {
+        // 只有在分配管理页面才刷新
+        if (currentTab === 'allocations') {
+            if (currentAllocationTab === 'roomType') {
+                loadRoomTypeAllocations();
+            } else {
+                loadAllocations();
+            }
+        } else {
+            // 如果切换到其他页面，停止刷新
+            stopAllocationAutoRefresh();
+        }
+    }, 3000);
+}
+
+function stopAllocationAutoRefresh() {
+    // 隐藏自动刷新指示器
+    const indicator = document.getElementById('autoRefreshIndicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
+    
+    // 清除定时器
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+    }
+}
+
 function showAllocationTab(tabName) {
     // 更新按钮状态
     document.getElementById('roomTypeTabBtn').className = 'btn btn-outline';
@@ -1107,6 +1158,12 @@ function showAllocationTab(tabName) {
     }
     
     currentAllocationTab = tabName;
+    
+    // 如果已经有自动刷新在运行，重启它以适应新的子选项卡
+    if (autoRefreshInterval && currentTab === 'allocations') {
+        stopAllocationAutoRefresh();
+        startAllocationAutoRefresh();
+    }
 }
 
 async function loadRoomTypeAllocations() {
