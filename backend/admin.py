@@ -118,28 +118,28 @@ def get_users():
     conn = db.get_db()
     c = conn.cursor()
     
-    # Get total count with search
+    # Get total count with search (exclude admin users)
     if search:
         c.execute('''
             SELECT COUNT(*) as total FROM users 
-            WHERE username LIKE ? OR name LIKE ?
+            WHERE is_admin = 0 AND (username LIKE ? OR name LIKE ?)
         ''', (f'%{search}%', f'%{search}%'))
     else:
-        c.execute('SELECT COUNT(*) as total FROM users')
+        c.execute('SELECT COUNT(*) as total FROM users WHERE is_admin = 0')
     
     total = c.fetchone()['total']
     pages = (total + per_page - 1) // per_page
     offset = (page - 1) * per_page
     
-    # Get users with pagination
+    # Get users with pagination (exclude admin users)
     if search:
         c.execute('''
             SELECT * FROM users 
-            WHERE username LIKE ? OR name LIKE ?
+            WHERE is_admin = 0 AND (username LIKE ? OR name LIKE ?)
             ORDER BY id DESC LIMIT ? OFFSET ?
         ''', (f'%{search}%', f'%{search}%', per_page, offset))
     else:
-        c.execute('SELECT * FROM users ORDER BY id DESC LIMIT ? OFFSET ?', (per_page, offset))
+        c.execute('SELECT * FROM users WHERE is_admin = 0 ORDER BY id DESC LIMIT ? OFFSET ?', (per_page, offset))
     
     users = c.fetchall()
     conn.close()
@@ -838,6 +838,19 @@ def create_room_type_allocation():
         return jsonify({'error': '房间类型必须是4或8'}), 400
     
     try:
+        # Check if the user is not an admin
+        conn = db.get_db()
+        c = conn.cursor()
+        c.execute('SELECT is_admin FROM users WHERE id = ?', (data['user_id'],))
+        user = c.fetchone()
+        conn.close()
+        
+        if not user:
+            return jsonify({'error': '用户不存在'}), 404
+        
+        if user['is_admin']:
+            return jsonify({'error': '不能为管理员用户分配房间类型'}), 400
+        
         db.allocate_room_type(
             data['user_id'],
             data['room_type'],
@@ -887,12 +900,17 @@ def import_room_type_allocations():
                         errors.append(f"第{index+2}行: 房间类型必须是4或8")
                         continue
                     
-                    # Get user by username
-                    c.execute('SELECT id FROM users WHERE username = ?', (username,))
+                    # Get user by username (exclude admin users)
+                    c.execute('SELECT id, is_admin FROM users WHERE username = ?', (username,))
                     user = c.fetchone()
                     if not user:
                         error_count += 1
                         errors.append(f"第{index+2}行: 用户名 {username} 不存在")
+                        continue
+                    
+                    if user['is_admin']:
+                        error_count += 1
+                        errors.append(f"第{index+2}行: 不能为管理员用户 {username} 分配房间类型")
                         continue
                     
                     # Allocate room type
@@ -1265,10 +1283,14 @@ def update_allocation(allocation_id):
             c = conn.cursor()
             
             # Check if allocation exists
-            c.execute('SELECT * FROM room_selections WHERE id = ?', (allocation_id,))
+            c.execute('SELECT rs.*, u.is_admin FROM room_selections rs JOIN users u ON rs.user_id = u.id WHERE rs.id = ?', (allocation_id,))
             allocation = c.fetchone()
             if not allocation:
                 return jsonify({'error': '分配记录不存在'}), 404
+            
+            # Prevent updating allocation for admin users
+            if allocation['is_admin']:
+                return jsonify({'error': '不能修改管理员用户的分配'}), 400
             
             # Update bed allocation
             if 'bed_id' in data:
