@@ -436,7 +436,7 @@
         </div>
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="hideEditLotteryRoomTypeModal()">取消</button>
-            <button type="button" class="btn btn-primary" onclick="confirmEditLotteryRoomType()">保存</button>
+            <button type="button" class="btn btn-primary" onclick="confirmEditLotteryRoomTypeLegacy()">保存</button>
         </div>
     </div>
 </div>
@@ -2403,7 +2403,7 @@ function hideEditLotteryRoomTypeModal() {
     currentEditLotteryResultId = null;
 }
 
-async function confirmEditLotteryRoomType() {
+async function confirmEditLotteryRoomTypeLegacy() {
     if (!currentEditLotteryResultId) {
         showAlert('无效的编辑请求', 'error');
         return;
