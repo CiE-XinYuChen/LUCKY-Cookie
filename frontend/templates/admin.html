@@ -2229,7 +2229,7 @@ async function loadLotteryResults() {
                                             <td>${result.user_name}</td>
                                             <td>${result.room_type ? `${result.room_type}人间` : '未分配'}</td>
                                             <td>
-                                                <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.room_type ? result.room_type : ''}')">编辑</button>
+                                                <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.room_type ? result.room_type : ''}')">编辑房型</button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -2273,34 +2273,67 @@ async function deleteLottery(lotteryId) {
 }
 
 async function editLotteryResultInModal(resultId, currentLotteryNumber, currentRoomType) {
-    const newLotteryNumber = prompt('请输入新的抽签号码：', currentLotteryNumber);
-    if (newLotteryNumber === null || newLotteryNumber === '') {
-        return;
-    }
+    // 只编辑房间类型，不编辑抽签号码
+    const roomTypeOptions = `
+        <div style="text-align: center;">
+            <p style="margin-bottom: 16px;">请选择新的房间类型：</p>
+            <select id="tempRoomTypeSelect" style="padding: 8px; font-size: 16px; width: 150px;">
+                <option value="">请选择</option>
+                <option value="4" ${currentRoomType === '4' ? 'selected' : ''}>4人间</option>
+                <option value="8" ${currentRoomType === '8' ? 'selected' : ''}>8人间</option>
+            </select>
+        </div>
+    `;
     
-    if (isNaN(newLotteryNumber) || parseInt(newLotteryNumber) <= 0) {
-        showAlert('请输入有效的抽签号码', 'error');
-        return;
-    }
+    // 创建临时的模态框
+    const tempModal = document.createElement('div');
+    tempModal.className = 'modal-overlay';
+    tempModal.style.display = 'flex';
+    tempModal.style.zIndex = '1001';
+    tempModal.innerHTML = `
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3 class="modal-title">编辑抽签结果 - 房间类型</h3>
+            </div>
+            <div class="modal-content">
+                <p><strong>抽签号码：</strong>${currentLotteryNumber}（固定不变）</p>
+                ${roomTypeOptions}
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-outline" onclick="this.closest('.modal-overlay').remove()">取消</button>
+                <button type="button" class="btn btn-primary" onclick="confirmEditLotteryRoomType(${resultId})">确认</button>
+            </div>
+        </div>
+    `;
     
-    const newRoomType = prompt('请输入房间类型（4或8）：', currentRoomType);
+    document.body.appendChild(tempModal);
+}
+
+async function confirmEditLotteryRoomType(resultId) {
+    const selectElement = document.getElementById('tempRoomTypeSelect');
+    const newRoomType = selectElement.value;
     
-    if (newRoomType && !['4', '8'].includes(newRoomType)) {
-        showAlert('房间类型只能是4或8', 'error');
+    if (!newRoomType) {
+        showAlert('请选择房间类型', 'error');
         return;
     }
     
     try {
+        // 只更新房间类型，不更新抽签号码
         const updateData = { 
-            lottery_number: parseInt(newLotteryNumber)
+            room_type: newRoomType
         };
         
-        if (newRoomType && newRoomType.trim() !== '') {
-            updateData.room_type = newRoomType.trim();
+        await api.updateLotteryResult(resultId, updateData);
+        showAlert('房间类型更新成功', 'success');
+        
+        // 关闭临时模态框
+        const tempModal = selectElement.closest('.modal-overlay');
+        if (tempModal) {
+            tempModal.remove();
         }
         
-        await api.updateLotteryResult(resultId, updateData);
-        showAlert('抽签结果更新成功', 'success');
+        // 重新加载结果
         loadLotteryResults();
     } catch (error) {
         showAlert(error.message, 'error');
