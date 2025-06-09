@@ -2089,8 +2089,8 @@ async function loadLotteryResults() {
                         <div>
                             ${setting && !setting.is_published ? `
                                 <button class="btn btn-success" style="margin-right: 8px;" onclick="publishLottery(${lotteryId})">发布</button>
-                                <button class="btn btn-error" onclick="deleteLottery(${lotteryId})">删除</button>
                             ` : ''}
+                            <button class="btn btn-error" onclick="deleteLottery(${lotteryId})">删除</button>
                         </div>
                     </div>
                     <div class="card-content">
@@ -2101,7 +2101,7 @@ async function loadLotteryResults() {
                                         <th>抽签号</th>
                                         <th>姓名</th>
                                         <th>房间类型</th>
-                                        ${setting && !setting.is_published ? '<th>操作</th>' : ''}
+                                        <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -2110,11 +2110,9 @@ async function loadLotteryResults() {
                                             <td><strong>${result.lottery_number}</strong></td>
                                             <td>${result.user_name}</td>
                                             <td>${result.room_type ? `${result.room_type}人间` : '未分配'}</td>
-                                            ${setting && !setting.is_published ? `
-                                                <td>
-                                                    <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.room_type ? result.room_type : ''}')">编辑</button>
-                                                </td>
-                                            ` : ''}
+                                            <td>
+                                                <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.room_type ? result.room_type : ''}')">编辑</button>
+                                            </td>
                                         </tr>
                                     `).join('')}
                                 </tbody>

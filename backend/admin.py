@@ -1348,11 +1348,10 @@ def update_lottery_result(result_id):
             if not result:
                 return jsonify({'error': '抽签结果不存在'}), 404
             
-            # Check if lottery is still draft (not published)
+            # Check if lottery is published (for informational message)
             c.execute('SELECT is_published FROM lottery_settings WHERE id = ?', (result['lottery_id'],))
             lottery_setting = c.fetchone()
-            if lottery_setting and lottery_setting['is_published']:
-                return jsonify({'error': '已发布的抽签结果不能修改'}), 400
+            is_published = lottery_setting and lottery_setting['is_published']
             
             # Update fields
             update_fields = []
@@ -1373,8 +1372,16 @@ def update_lottery_result(result_id):
             if update_fields:
                 update_params.append(result_id)
                 c.execute(f'UPDATE lottery_results SET {", ".join(update_fields)} WHERE id = ?', update_params)
+                
+                # Prepare success message
+                if is_published:
+                    message = '抽签结果更新成功（注意：此抽签已发布，学生可能已看到修改前的结果）'
+                else:
+                    message = '抽签结果更新成功'
+            else:
+                message = '没有需要更新的字段'
         
-        return jsonify({'message': '抽签结果更新成功'}), 200
+        return jsonify({'message': message}), 200
     except Exception as e:
         return jsonify({'error': f'更新失败: {str(e)}'}), 500
 
