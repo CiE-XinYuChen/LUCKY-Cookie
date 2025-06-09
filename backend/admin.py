@@ -403,6 +403,45 @@ def get_building_rooms(building_id):
         'rooms': [room_to_dict(r) for r in rooms]
     }), 200
 
+@admin_bp.route('/rooms', methods=['GET'])
+@admin_required
+def get_rooms():
+    building_id = request.args.get('building_id', type=int)
+    room_type = request.args.get('room_type')
+    
+    conn = db.get_db()
+    c = conn.cursor()
+    
+    query = '''
+        SELECT r.*, b.name as building_name,
+               (SELECT COUNT(*) FROM beds WHERE room_id = r.id AND is_occupied = 0) as available_beds
+        FROM rooms r
+        JOIN buildings b ON r.building_id = b.id
+        WHERE 1=1
+    '''
+    
+    params = []
+    if building_id:
+        query += ' AND r.building_id = ?'
+        params.append(building_id)
+    if room_type:
+        query += ' AND r.room_type = ?'
+        params.append(room_type)
+    
+    query += ' ORDER BY b.name, r.room_number'
+    
+    if params:
+        c.execute(query, params)
+    else:
+        c.execute(query)
+    
+    rooms = c.fetchall()
+    conn.close()
+    
+    return jsonify({
+        'rooms': [room_to_dict(r) for r in rooms]
+    }), 200
+
 @admin_bp.route('/rooms', methods=['POST'])
 @admin_required
 def create_room():
@@ -424,6 +463,74 @@ def create_room():
         if 'UNIQUE constraint failed' in str(e):
             return jsonify({'error': '该楼栋已存在相同房间号'}), 409
         return jsonify({'error': '创建失败'}), 500
+
+@admin_bp.route('/rooms/import', methods=['POST'])
+@admin_required
+def import_rooms():
+    if 'file' not in request.files:
+        return jsonify({'error': '没有文件被上传'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': '没有选择文件'}), 400
+    
+    if not file.filename.endswith('.csv'):
+        return jsonify({'error': '只支持CSV文件'}), 400
+    
+    try:
+        df = pd.read_csv(io.StringIO(file.read().decode('utf-8')))
+        
+        required_columns = ['building_name', 'room_number', 'room_type', 'max_capacity']
+        if not all(col in df.columns for col in required_columns):
+            return jsonify({'error': 'CSV文件必须包含building_name、room_number、room_type和max_capacity列'}), 400
+        
+        success_count = 0
+        error_count = 0
+        errors = []
+        
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            for index, row in df.iterrows():
+                try:
+                    building_name = str(row['building_name']).strip()
+                    room_number = str(row['room_number']).strip()
+                    room_type = str(row['room_type']).strip()
+                    max_capacity = int(row['max_capacity'])
+                    
+                    # Get building by name
+                    c.execute('SELECT id FROM buildings WHERE name = ?', (building_name,))
+                    building = c.fetchone()
+                    if not building:
+                        error_count += 1
+                        errors.append(f"第{index+2}行: 楼栋 {building_name} 不存在")
+                        continue
+                    
+                    # Check if room already exists
+                    c.execute('SELECT id FROM rooms WHERE building_id = ? AND room_number = ?', 
+                             (building['id'], room_number))
+                    if c.fetchone():
+                        error_count += 1
+                        errors.append(f"第{index+2}行: 房间 {building_name}-{room_number} 已存在")
+                        continue
+                    
+                    # Create room
+                    db.create_room(building['id'], room_number, room_type, max_capacity)
+                    success_count += 1
+                    
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f"第{index+2}行: {str(e)}")
+        
+        return jsonify({
+            'message': f'导入完成：成功 {success_count} 个，失败 {error_count} 个',
+            'success_count': success_count,
+            'error_count': error_count,
+            'errors': errors[:10]
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'文件处理失败: {str(e)}'}), 500
 
 @admin_bp.route('/rooms/<int:room_id>', methods=['GET'])
 @admin_required
@@ -629,3 +736,129 @@ def get_allocation_history():
     return jsonify({
         'history': [history_to_dict(h) for h in history]
     }), 200
+
+@admin_bp.route('/unallocated-users', methods=['GET'])
+@admin_required
+def get_unallocated_users():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '')
+    
+    conn = db.get_db()
+    c = conn.cursor()
+    
+    # Get users who haven't selected a room
+    base_query = '''
+        SELECT u.* FROM users u
+        WHERE u.is_admin = 0 
+        AND u.id NOT IN (SELECT user_id FROM room_selections)
+    '''
+    
+    if search:
+        base_query += ' AND (u.username LIKE ? OR u.name LIKE ?)'
+        search_params = (f'%{search}%', f'%{search}%')
+        
+        # Count total
+        c.execute(f'SELECT COUNT(*) as total FROM ({base_query})', search_params)
+        total = c.fetchone()['total']
+        
+        # Get users with pagination
+        offset = (page - 1) * per_page
+        c.execute(f'{base_query} ORDER BY u.id DESC LIMIT ? OFFSET ?', 
+                 search_params + (per_page, offset))
+    else:
+        # Count total
+        c.execute(f'SELECT COUNT(*) as total FROM ({base_query})')
+        total = c.fetchone()['total']
+        
+        # Get users with pagination
+        offset = (page - 1) * per_page
+        c.execute(f'{base_query} ORDER BY u.id DESC LIMIT ? OFFSET ?', (per_page, offset))
+    
+    users = c.fetchall()
+    conn.close()
+    
+    pages = (total + per_page - 1) // per_page
+    
+    return jsonify({
+        'users': [user_to_dict(user) for user in users],
+        'total': total,
+        'pages': pages,
+        'current_page': page
+    }), 200
+
+@admin_bp.route('/unallocated-room-type-users', methods=['GET'])
+@admin_required
+def get_unallocated_room_type_users():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '')
+    
+    conn = db.get_db()
+    c = conn.cursor()
+    
+    # Get users who haven't been allocated a room type
+    base_query = '''
+        SELECT u.* FROM users u
+        WHERE u.is_admin = 0 
+        AND u.id NOT IN (SELECT user_id FROM room_type_allocations)
+    '''
+    
+    if search:
+        base_query += ' AND (u.username LIKE ? OR u.name LIKE ?)'
+        search_params = (f'%{search}%', f'%{search}%')
+        
+        # Count total
+        c.execute(f'SELECT COUNT(*) as total FROM ({base_query})', search_params)
+        total = c.fetchone()['total']
+        
+        # Get users with pagination
+        offset = (page - 1) * per_page
+        c.execute(f'{base_query} ORDER BY u.id DESC LIMIT ? OFFSET ?', 
+                 search_params + (per_page, offset))
+    else:
+        # Count total
+        c.execute(f'SELECT COUNT(*) as total FROM ({base_query})')
+        total = c.fetchone()['total']
+        
+        # Get users with pagination
+        offset = (page - 1) * per_page
+        c.execute(f'{base_query} ORDER BY u.id DESC LIMIT ? OFFSET ?', (per_page, offset))
+    
+    users = c.fetchall()
+    conn.close()
+    
+    pages = (total + per_page - 1) // per_page
+    
+    return jsonify({
+        'users': [user_to_dict(user) for user in users],
+        'total': total,
+        'pages': pages,
+        'current_page': page
+    }), 200
+
+@admin_bp.route('/allocations/<int:allocation_id>', methods=['PUT'])
+@admin_required
+def update_allocation(allocation_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    try:
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if allocation exists
+            c.execute('SELECT * FROM room_selections WHERE id = ?', (allocation_id,))
+            allocation = c.fetchone()
+            if not allocation:
+                return jsonify({'error': '分配记录不存在'}), 404
+            
+            # Update fields
+            if 'is_confirmed' in data:
+                c.execute('UPDATE room_selections SET is_confirmed = ? WHERE id = ?', 
+                         (1 if data['is_confirmed'] else 0, allocation_id))
+        
+        return jsonify({'message': '分配更新成功'}), 200
+    except Exception as e:
+        return jsonify({'error': '更新失败'}), 500
