@@ -562,7 +562,7 @@ class DashboardManager {
         const { lotteryResults, roomSelection } = this.state;
         
         // 抽签状态
-        let lotteryStatus = { text: '未参与', color: 'var(--gray-400)', icon: 'help-circle' };
+        let lotteryStatus = { text: '未公布', color: 'var(--gray-400)', icon: 'help-circle' };
         
         if (lotteryResults && lotteryResults.length > 0) {
             const result = lotteryResults[0];
