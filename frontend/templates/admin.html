@@ -2370,7 +2370,11 @@ async function publishLottery(lotteryId) {
     try {
         const response = await api.publishLotteryResults(lotteryId);
         showAlert(response.message, 'success');
-        loadLotteryResults(); // 重新加载结果
+        
+        // 等待一小段时间确保数据库更新完成，然后重新加载结果
+        setTimeout(() => {
+            loadLotteryResults();
+        }, 500);
     } catch (error) {
         showAlert(error.message, 'error');
     }
