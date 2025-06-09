@@ -693,9 +693,52 @@ def delete_allocation(user_id):
 @admin_bp.route('/room-type-allocations', methods=['GET'])
 @admin_required
 def get_room_type_allocations():
-    allocations = db.get_room_type_allocations()
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '')
+    
+    conn = db.get_db()
+    c = conn.cursor()
+    
+    # Base query
+    base_query = '''
+        SELECT rta.*, u.name as user_name, u.username, 
+               a.name as allocator_name
+        FROM room_type_allocations rta
+        JOIN users u ON rta.user_id = u.id
+        LEFT JOIN users a ON rta.allocated_by = a.id
+    '''
+    
+    # Add search filter if provided
+    params = []
+    if search:
+        base_query += ' WHERE u.name LIKE ? OR u.username LIKE ?'
+        params.extend([f'%{search}%', f'%{search}%'])
+    
+    # Get total count
+    count_query = f'SELECT COUNT(*) as total FROM ({base_query}) as filtered'
+    if params:
+        c.execute(count_query, params)
+    else:
+        c.execute(count_query)
+    total = c.fetchone()['total']
+    
+    # Add pagination
+    base_query += ' ORDER BY rta.allocated_at DESC LIMIT ? OFFSET ?'
+    offset = (page - 1) * per_page
+    params.extend([per_page, offset])
+    
+    c.execute(base_query, params)
+    allocations = c.fetchall()
+    conn.close()
+    
+    pages = (total + per_page - 1) // per_page
+    
     return jsonify({
-        'allocations': [room_type_allocation_to_dict(a) for a in allocations]
+        'allocations': [room_type_allocation_to_dict(a) for a in allocations],
+        'total': total,
+        'pages': pages,
+        'current_page': page
     }), 200
 
 @admin_bp.route('/room-type-allocations', methods=['POST'])
