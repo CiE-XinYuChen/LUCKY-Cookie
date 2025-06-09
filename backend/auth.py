@@ -11,24 +11,17 @@ def admin_required(f):
         try:
             verify_jwt_in_request()
             current_user_id = get_jwt_identity()
-            print(f"Debug: Current user ID: {current_user_id}")
-            
             user = db.get_user_by_id(current_user_id)
-            print(f"Debug: User found: {user}")
             
             if not user:
-                print("Debug: User not found")
                 return jsonify({'error': '用户不存在'}), 403
                 
             if not user['is_admin']:
-                print(f"Debug: User {user['username']} is not admin (is_admin: {user['is_admin']})")
                 return jsonify({'error': '需要管理员权限'}), 403
                 
-            print(f"Debug: Admin access granted for user {user['username']}")
             return f(*args, **kwargs)
         except Exception as e:
-            print(f"Debug: Exception in admin_required: {e}")
-            return jsonify({'error': f'权限验证失败: {str(e)}'}), 403
+            return jsonify({'error': '权限验证失败'}), 403
     return decorated_function
 
 @auth_bp.route('/login', methods=['POST'])
