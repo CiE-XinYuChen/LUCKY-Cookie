@@ -10,10 +10,10 @@
     <div class="card" style="margin-bottom: 24px;">
         <div class="card-content">
             <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-                <button type="button" class="btn btn-primary" onclick="showTab('users')">用户管理</button>
-                <button type="button" class="btn btn-outline" onclick="showTab('buildings')">建筑管理</button>
-                <button type="button" class="btn btn-outline" onclick="showTab('rooms')">房间管理</button>
-                <button type="button" class="btn btn-outline" onclick="showTab('allocations')">分配管理</button>
+                <button type="button" class="btn btn-primary" onclick="showTab('users', event)">用户管理</button>
+                <button type="button" class="btn btn-outline" onclick="showTab('buildings', event)">建筑管理</button>
+                <button type="button" class="btn btn-outline" onclick="showTab('rooms', event)">房间管理</button>
+                <button type="button" class="btn btn-outline" onclick="showTab('allocations', event)">分配管理</button>
             </div>
         </div>
     </div>
@@ -299,7 +299,7 @@
         </div>
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="hideQuickLotteryModal()">取消</button>
-            <button type="button" class="btn btn-primary" onclick="performQuickLottery()">开始抽签</button>
+            <button type="button" class="btn btn-primary" onclick="performQuickLottery(event)">开始抽签</button>
         </div>
     </div>
 </div>
@@ -472,6 +472,11 @@ let selectedBedId = null;
 let selectedRoomTypeUserId = null;
 let selectedRoomTypeUserName = '';
 let currentAllocationTab = 'roomType';
+let currentEditLotteryResultId = null;
+let currentEditingRoomId = null;
+let currentEditAllocationId = null;
+let selectedEditBedId = null;
+let isResultsViewVisible = false;
 
 document.addEventListener('DOMContentLoaded', async function() {
     if (!(await requireAdmin())) return;
@@ -479,7 +484,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     showTab('users');
 });
 
-function showTab(tabName) {
+function showTab(tabName, event) {
     // 隐藏所有选项卡
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.style.display = 'none';
@@ -492,7 +497,11 @@ function showTab(tabName) {
     
     // 显示选中的选项卡
     document.getElementById(tabName + 'Tab').style.display = 'block';
-    event.target.className = 'btn btn-primary';
+    
+    // 如果有event，更新按钮样式
+    if (event && event.target) {
+        event.target.className = 'btn btn-primary';
+    }
     
     currentTab = tabName;
     
@@ -762,7 +771,6 @@ async function deleteBuilding(buildingId) {
 }
 
 // 房间管理相关函数
-let currentEditingRoomId = null;
 
 function editRoom(roomId, roomNumber, roomType, maxCapacity, isAvailable) {
     currentEditingRoomId = roomId;
@@ -1113,8 +1121,6 @@ async function deleteAllocation(allocationId) {
 }
 
 // 编辑分配相关函数
-let currentEditAllocationId = null;
-let selectedEditBedId = null;
 
 async function editAllocation(allocationId) {
     currentEditAllocationId = allocationId;
@@ -1244,7 +1250,7 @@ async function loadBedsForEditAllocation() {
                             <td>${bed.bed_number}号床</td>
                             <td>空闲</td>
                             <td>
-                                <button class="btn btn-primary btn-sm" onclick="selectEditBed(${bed.id}, '${bed.bed_number}')">选择</button>
+                                <button class="btn btn-primary btn-sm" onclick="selectEditBed(${bed.id}, '${bed.bed_number}', event)">选择</button>
                             </td>
                         </tr>
                     `).join('')}
@@ -1258,7 +1264,7 @@ async function loadBedsForEditAllocation() {
     }
 }
 
-function selectEditBed(bedId, bedNumber) {
+function selectEditBed(bedId, bedNumber, event) {
     selectedEditBedId = bedId;
     
     // 更新按钮状态
@@ -1269,8 +1275,10 @@ function selectEditBed(bedId, bedNumber) {
     });
     
     // 高亮选中的床位
-    event.target.textContent = '已选择';
-    event.target.className = 'btn btn-success btn-sm';
+    if (event && event.target) {
+        event.target.textContent = '已选择';
+        event.target.className = 'btn btn-success btn-sm';
+    }
     
     // 启用确认按钮
     document.getElementById('confirmEditAllocationBtn').disabled = false;
@@ -1781,7 +1789,7 @@ function hideQuickLotteryModal() {
     document.getElementById('quickLotteryForm').reset();
 }
 
-async function performQuickLottery() {
+async function performQuickLottery(event) {
     const lotteryName = document.getElementById('lotteryName').value.trim();
     const allocationMode = document.getElementById('allocationMode').value;
     
@@ -1887,8 +1895,6 @@ function hideLotteryConfirmModal() {
     if (resultsSection) resultsSection.style.display = 'none';
     if (toggleBtn) toggleBtn.textContent = '查看和修改结果';
 }
-
-let isResultsViewVisible = false;
 
 async function toggleLotteryResultsView() {
     const resultsSection = document.getElementById('lotteryResultsSection');
@@ -2186,8 +2192,6 @@ async function editLotteryResultInModal(resultId, currentLotteryNumber, currentR
 }
 
 // 编辑抽签房间类型分配相关函数
-let currentEditLotteryResultId = null;
-
 function editLotteryRoomTypeAllocation(resultId, currentRoomType, userName) {
     currentEditLotteryResultId = resultId;
     
