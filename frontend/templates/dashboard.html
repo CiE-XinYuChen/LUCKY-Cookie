@@ -109,17 +109,39 @@ let userData = null;
 let hasLotteryResult = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    if (!requireAuth()) return;
+    console.log('Dashboard DOM loaded');
     
-    loadUserInfo();
-    loadLotteryResults().then(() => {
-        loadRoomSelection();
+    // 检查API对象
+    if (typeof api === 'undefined') {
+        console.error('API object not found');
+        showAlert('系统初始化失败，请刷新页面重试', 'error');
+        return;
+    }
+    console.log('API object found');
+    
+    // 检查认证
+    if (!requireAuth()) {
+        console.log('Auth failed');
+        return;
+    }
+    console.log('Auth passed');
+    
+    console.log('Starting to load dashboard components');
+    loadUserInfo().then(() => {
+        return loadLotteryResults();
+    }).then(() => {
+        return loadRoomSelection();
+    }).catch(error => {
+        console.error('Error loading dashboard:', error);
+        showAlert('加载页面失败: ' + error.message, 'error');
     });
 });
 
 async function loadUserInfo() {
+    console.log('Loading user info...');
     try {
         const response = await api.getProfile();
+        console.log('Profile response:', response);
         userData = response.user;
         
         document.getElementById('userInfo').innerHTML = `
@@ -162,14 +184,18 @@ async function loadUserInfo() {
         
         // 加载状态概览
         loadStatusOverview();
+        console.log('User info loaded successfully');
     } catch (error) {
+        console.error('Error loading user info:', error);
         showAlert(error.message, 'error');
     }
 }
 
 async function loadLotteryResults() {
+    console.log('Loading lottery results...');
     try {
         const response = await api.getLotteryResults();
+        console.log('Lottery response:', response);
         const container = document.getElementById('lotteryResults');
         
         if (response.results.length === 0) {
@@ -247,7 +273,9 @@ async function loadLotteryResults() {
         `).join('');
         
         container.innerHTML = resultsHtml;
+        console.log('Lottery results loaded successfully');
     } catch (error) {
+        console.error('Error loading lottery results:', error);
         document.getElementById('lotteryResults').innerHTML = '<p>加载抽签结果失败</p>';
     }
 }
@@ -281,8 +309,10 @@ async function participateLottery() {
 }
 
 async function loadRoomSelection() {
+    console.log('Loading room selection...');
     try {
         const response = await api.getMySelection();
+        console.log('Room selection response:', response);
         const container = document.getElementById('roomSelection');
         
         if (!response.selection) {
@@ -351,7 +381,9 @@ async function loadRoomSelection() {
                 </div>
             ` : '<div class="alert alert-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>您的宿舍选择已确认</div>'}
         `;
+        console.log('Room selection loaded successfully');
     } catch (error) {
+        console.error('Error loading room selection:', error);
         document.getElementById('roomSelection').innerHTML = '<p>加载宿舍选择失败</p>';
     }
 }
