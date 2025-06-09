@@ -56,17 +56,19 @@ def allocation_to_dict(allocation):
     }
 
 def room_type_allocation_to_dict(rta):
+    # Convert Row to dict for safe access
+    rta_dict = dict(rta)
     return {
-        'id': rta['id'],
-        'user_id': rta['user_id'],
-        'user_name': rta.get('user_name'),
-        'user_username': rta.get('username'),
-        'room_type': rta['room_type'],
-        'allocated_by': rta.get('allocated_by'),
-        'allocator_name': rta.get('allocator_name'),
-        'allocated_at': rta['allocated_at'],
-        'notes': rta.get('notes'),
-        'allocation_type': rta.get('allocation_type', 'manual')
+        'id': rta_dict['id'],
+        'user_id': rta_dict['user_id'],
+        'user_name': rta_dict.get('user_name'),
+        'user_username': rta_dict.get('username'),
+        'room_type': rta_dict['room_type'],
+        'allocated_by': rta_dict.get('allocated_by'),
+        'allocator_name': rta_dict.get('allocator_name'),
+        'allocated_at': rta_dict['allocated_at'],
+        'notes': rta_dict.get('notes'),
+        'allocation_type': rta_dict.get('allocation_type', 'manual')
     }
 
 def lottery_result_to_dict(result):
