@@ -665,15 +665,29 @@ def get_allocations():
         'allocations': [allocation_to_dict(a) for a in allocations]
     }), 200
 
-@admin_bp.route('/allocations/<int:user_id>', methods=['DELETE'])
+@admin_bp.route('/allocations/<int:allocation_id>', methods=['DELETE'])
 @admin_required
-def delete_allocation(user_id):
+def delete_allocation(allocation_id):
     current_user_id = get_jwt_identity()
     
     try:
-        selection = db.get_user_room_selection(user_id)
+        # Get allocation details by allocation_id
+        conn = db.get_db()
+        c = conn.cursor()
+        c.execute('''
+            SELECT rs.*, u.name as user_name, r.room_number, b.name as building_name, bd.bed_number
+            FROM room_selections rs
+            JOIN users u ON rs.user_id = u.id
+            JOIN rooms r ON rs.room_id = r.id
+            JOIN buildings b ON r.building_id = b.id
+            JOIN beds bd ON rs.bed_id = bd.id
+            WHERE rs.id = ?
+        ''', (allocation_id,))
+        selection = c.fetchone()
+        conn.close()
+        
         if not selection:
-            return jsonify({'error': '用户没有分配记录'}), 404
+            return jsonify({'error': '分配记录不存在'}), 404
         
         # Save to history
         with db.get_db_connection() as conn:
@@ -681,10 +695,10 @@ def delete_allocation(user_id):
             c.execute('''
                 INSERT INTO allocation_history (user_id, room_id, bed_id, action, operated_by, notes)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (user_id, selection['room_id'], selection['bed_id'], '取消分配', current_user_id, '管理员取消分配'))
+            ''', (selection['user_id'], selection['room_id'], selection['bed_id'], '取消分配', current_user_id, '管理员取消分配'))
         
-        # Cancel selection
-        db.cancel_room_selection(user_id)
+        # Cancel selection by user_id
+        db.cancel_room_selection(selection['user_id'])
         
         return jsonify({'message': '分配已取消'}), 200
     except Exception as e:
