@@ -49,7 +49,7 @@ export FLASK_ENV=development
 export FLASK_DEBUG=True
 
 echo "=== 启动应用 ==="
-echo "访问地址: http://localhost:5000"
+echo "访问地址: http://localhost:32228"
 echo "默认管理员账户: admin / admin123"
 echo "按 Ctrl+C 停止服务"
 echo ""

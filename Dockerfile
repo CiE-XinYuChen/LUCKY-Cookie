@@ -24,7 +24,7 @@ RUN mkdir -p uploads
 RUN chmod +x app.py
 
 # 暴露端口
-EXPOSE 5000
+EXPOSE 32228
 
 # 启动命令
 CMD ["python", "app.py"]

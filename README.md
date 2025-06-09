@@ -2,479 +2,417 @@
 
 <div align="center">
 
-![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![Flask](https://img.shields.io/badge/Flask-2.3+-green.svg)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-11+-blue.svg)
-![Redis](https://img.shields.io/badge/Redis-5.0+-red.svg)
+![SQLite](https://img.shields.io/badge/SQLite-3.0+-blue.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Port](https://img.shields.io/badge/Port-32228-red.svg)
 
 **基于 Python Flask 的现代化宿舍分配系统**
 
-支持公平抽签 • 实时选择 • 高并发处理 • Material Design
+支持公平抽签 • 实时选择 • 高并发处理 • Material Design • 完全重构
 
-[在线演示](http://your-demo-site.com) • [功能特性](#功能特性) • [快速开始](#快速开始) • [部署指南](#部署指南)
+[功能特性](#功能特性) • [快速开始](#快速开始) • [系统架构](#系统架构) • [部署指南](#部署指南)
 
 </div>
 
 ## 📋 目录
 
 - [功能特性](#功能特性)
-- [技术架构](#技术架构)
+- [系统架构](#系统架构)
 - [快速开始](#快速开始)
 - [部署指南](#部署指南)
-- [系统截图](#系统截图)
 - [API文档](#api文档)
 - [开发指南](#开发指南)
+- [配置说明](#配置说明)
 - [常见问题](#常见问题)
-- [贡献指南](#贡献指南)
+- [更新日志](#更新日志)
 - [许可证](#许可证)
 
 ## 🎯 功能特性
 
+### 🔐 用户认证系统
+- ✅ JWT Token 认证机制，安全可靠
+- ✅ bcrypt 密码加密存储
+- ✅ 用户注册、登录、密码修改
+- ✅ 管理员权限分离和访问控制
+- ✅ 会话管理和自动登出
+
 ### 👥 用户管理
-- ✅ 用户注册、登录、个人信息管理
-- ✅ CSV文件批量导入用户（姓名、用户名、密码）
-- ✅ 手动创建单个用户账户
-- ✅ 用户密码自主修改和管理员重置
-- ✅ 管理员权限管理和用户删除
+- ✅ **CSV批量导入用户** - 支持姓名、用户名、密码批量导入
+- ✅ **单个用户创建** - 手动创建学生和管理员账户
+- ✅ **用户信息管理** - 查看、编辑、删除用户
+- ✅ **密码重置功能** - 管理员可重置任意用户密码
+- ✅ **用户状态统计** - 实时显示用户数量和分配状态
+
+### 🏗️ 宿舍管理系统
+- ✅ **三级管理架构** - 建筑 → 房间 → 床位
+- ✅ **建筑管理** - 新增、删除建筑，安全检查关联房间
+- ✅ **房间管理** - 支持4人间/8人间/自定义容量
+- ✅ **CSV批量导入** - 房间信息批量导入和验证
+- ✅ **床位自动生成** - 根据房间类型自动创建床位
+- ✅ **实时占用状态** - 动态显示房间和床位占用情况
 
 ### 🎲 抽签系统
-- ✅ 创建抽签活动，设置公布时间
-- ✅ 支持4人间/8人间不同宿舍类型
-- ✅ 一键抽签功能，自动生成抽签结果
-- ✅ 抽签结果预览，支持发布/删除操作
-- ✅ 自动生成抽签号码，公平透明
-- ✅ 分组管理，便于组织
-- ✅ 管理员可修改抽签结果
+- ✅ **一键抽签功能** - 自动为所有用户生成抽签号码
+- ✅ **寝室类型分配** - 先分配寝室类型（4人间/8人间）
+- ✅ **抽签结果管理** - 发布、预览、删除抽签结果
+- ✅ **结果修改功能** - 管理员可手动调整抽签结果
+- ✅ **分配历史记录** - 完整的分配历史和操作日志
 
-### 🏠 宿舍管理
-- ✅ 建筑、房间、床位三级管理
-- ✅ 建筑管理：新增、删除（含安全检查）
-- ✅ 房间管理：单个创建 + CSV批量导入
-- ✅ 房间导入格式：building_name,room_number,room_type,max_capacity
-- ✅ 实时显示宿舍占用情况
-- ✅ 查看同宿舍室友信息
-- ✅ 支持宿舍预览和选择
+### 🏠 宿舍选择系统
+- ✅ **智能筛选** - 按楼栋、房间类型筛选可用宿舍
+- ✅ **实时更新** - 宿舍状态实时同步，防止冲突
+- ✅ **室友信息预览** - 选择前查看当前室友信息
+- ✅ **床位标注系统** - 8人间下铺标注，便于选择
+- ✅ **选择确认机制** - 两步确认，防止误操作
+- ✅ **选择历史** - 查看和管理选择历史
 
-### 🎯 寝室类型分配系统（核心功能）
-- ✅ 分离寝室类型分配和具体宿舍分配
-- ✅ 学生先被分配寝室类型（4人间/8人间）
-- ✅ 后台可修改学生的寝室类型分配
-- ✅ 具体宿舍选择受寝室类型限制
-- ✅ 双级管理：类型分配 → 具体房间分配
-- ✅ 完整的分配历史记录
+### 🎨 现代化界面设计
+- ✅ **Material Design** - 遵循Material Design设计规范
+- ✅ **响应式布局** - 完美适配桌面、平板、手机
+- ✅ **无图标设计** - 极简设计，专注内容
+- ✅ **动画效果** - 流畅的页面切换和交互动画
+- ✅ **无障碍支持** - ARIA标签和键盘导航支持
 
-### ⚡ 高并发选择
-- ✅ Redis分布式锁机制
-- ✅ 防止多用户同时抢占同一床位
-- ✅ 实时更新宿舍状态
-- ✅ 优雅的错误处理和用户提示
-
-### 🎨 现代化界面
-- ✅ Material Design 设计规范
-- ✅ 响应式布局，支持移动端
-- ✅ 直观的操作流程
-- ✅ 实时反馈和状态提示
+### 💻 个人中心功能
+- ✅ **状态概览** - 抽签状态、宿舍状态一目了然
+- ✅ **个人信息** - 查看姓名、用户名等基本信息
+- ✅ **抽签结果展示** - 抽签号码和分配结果
+- ✅ **宿舍选择管理** - 当前选择状态和确认操作
+- ✅ **密码修改** - 安全的密码更改功能
 
 ### 🔒 安全特性
-- ✅ JWT Token 认证
-- ✅ bcrypt 密码加密
-- ✅ SQL注入防护
-- ✅ CORS安全策略
-- ✅ 输入验证和过滤
+- ✅ **输入验证** - 前后端双重数据验证
+- ✅ **SQL注入防护** - 参数化查询防止注入
+- ✅ **XSS防护** - HTML转义和内容安全策略
+- ✅ **CSRF保护** - 跨站请求伪造防护
+- ✅ **权限控制** - 细粒度的接口权限控制
 
-## 🏗️ 技术架构
+### 📱 管理后台
+- ✅ **统一管理界面** - 集中管理所有功能模块
+- ✅ **数据统计面板** - 实时数据统计和图表展示
+- ✅ **批量操作功能** - 支持批量导入、导出操作
+- ✅ **操作日志** - 详细的管理操作记录
+- ✅ **系统监控** - 用户活动和系统状态监控
+
+### 🌐 用户体验优化
+- ✅ **ICP备案信息** - 符合中国法律法规要求
+- ✅ **错误处理机制** - 友好的错误提示和重试机制
+- ✅ **加载状态** - 骨架屏和加载动画
+- ✅ **操作反馈** - 实时操作结果反馈
+- ✅ **自动刷新** - 关键数据自动更新
+
+## 🏗️ 系统架构
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   前端界面      │    │   Flask API     │    │   数据存储      │
 │                 │    │                 │    │                 │
-│ • Material UI   │◄──►│ • 用户认证      │◄──►│ • PostgreSQL    │
-│ • 响应式设计    │    │ • 抽签管理      │    │ • Redis缓存     │
-│ • 实时更新      │    │ • 宿舍分配      │    │ • 分布式锁      │
-│ • JavaScript    │    │ • 权限控制      │    │ • 数据持久化    │
+│ • Material UI   │◄──►│ • JWT认证       │◄──►│ • SQLite数据库  │
+│ • 响应式设计    │    │ • 权限控制      │    │ • 文件存储      │
+│ • 实时交互      │    │ • 业务逻辑      │    │ • 数据持久化    │
+│ • 无障碍支持    │    │ • API接口       │    │ • 事务处理      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-### 核心组件
-- **后端**: Flask + SQLAlchemy + JWT
-- **数据库**: PostgreSQL (用户数据、宿舍信息)
-- **缓存**: Redis (分布式锁、会话管理)
+### 技术栈
+- **后端框架**: Flask 2.3+ + Flask-JWT-Extended
+- **数据库**: SQLite 3.0+ (轻量级，易部署)
 - **前端**: HTML5 + CSS3 + Vanilla JavaScript
+- **UI框架**: Material Design Components
 - **部署**: Docker + Docker Compose
+- **安全**: bcrypt + JWT + CORS
+
+### 核心模块
+```
+backend/
+├── app.py              # Flask应用工厂和配置
+├── auth.py             # 用户认证和授权
+├── admin.py            # 管理员功能模块
+├── lottery.py          # 抽签系统核心逻辑
+├── room_selection.py   # 宿舍选择功能
+└── database.py         # 数据库操作封装
+
+frontend/
+├── templates/          # Jinja2模板文件
+│   ├── base.html      # 基础模板
+│   ├── index.html     # 主页
+│   ├── login.html     # 登录页
+│   ├── dashboard.html # 个人中心
+│   ├── room_selection.html # 宿舍选择
+│   └── admin.html     # 管理后台
+└── static/
+    ├── css/material.css # Material Design样式
+    └── js/api.js       # API调用封装
+```
 
 ## 🚀 快速开始
 
 ### 环境要求
-- 🐍 Python 3.7+
-- 🐘 PostgreSQL 11+
-- 🔴 Redis 5.0+
-- 🐳 Docker & Docker Compose (可选)
+- 🐍 **Python 3.9+** (推荐3.11+)
+- 💾 **SQLite** (Python内置)
+- 🐳 **Docker** (可选，用于容器化部署)
+- 🌐 **现代浏览器** (Chrome 90+, Firefox 88+, Safari 14+)
 
-### 方式一：本地开发
+### 一键启动 (推荐)
 
-#### 1. 克隆项目
+```bash
+# 1. 克隆项目
+git clone https://github.com/CiE-XinYuChen/LUCKY-Cookie.git
+cd LUCKY-Cookie
+
+# 2. 运行启动脚本
+chmod +x run.sh
+./run.sh
+
+# 3. 访问系统
+# 浏览器打开: http://localhost:32228
+# 默认管理员: admin / admin123
+```
+
+### 手动安装步骤
+
+#### 1. 项目下载
 ```bash
 git clone https://github.com/CiE-XinYuChen/LUCKY-Cookie.git
 cd LUCKY-Cookie
 ```
 
-#### 2. 创建虚拟环境
+#### 2. 环境配置
 ```bash
-# Linux/Mac
+# 创建虚拟环境
 python3 -m venv venv
+
+# 激活虚拟环境
+# Linux/Mac:
 source venv/bin/activate
-
-# Windows
-python -m venv venv
+# Windows:
 venv\Scripts\activate
-```
 
-#### 3. 安装依赖
-```bash
+# 安装依赖
 pip install -r requirements.txt
 ```
 
-#### 4. 配置环境变量
+#### 3. 数据库初始化
 ```bash
-# 复制配置文件
-cp .env.example .env
-
-# 编辑配置（重要！）
-nano .env
+# 创建数据库（自动执行）
+python -c "
+from backend.database import init_db
+init_db()
+print('数据库初始化完成!')
+"
 ```
 
-`.env` 文件配置示例：
+#### 4. 启动服务
 ```bash
-# 数据库配置
-DATABASE_URL=postgresql://username:password@localhost/dorm_lottery
-
-# Redis配置
-REDIS_URL=redis://localhost:6379/0
-
-# 安全密钥（生产环境请修改）
-SECRET_KEY=your-very-secret-key-here
-JWT_SECRET_KEY=your-jwt-secret-key-here
-
-# 环境设置
-FLASK_ENV=development
-FLASK_DEBUG=True
-```
-
-#### 5. 初始化数据库
-```bash
-# 创建数据库
-createdb dorm_lottery
-
-# 导入数据结构和示例数据
-psql -d dorm_lottery -f database/schema.sql
-```
-
-#### 6. 启动服务
-```bash
-# 使用启动脚本（推荐）
-./run.sh
-
-# 或者直接运行
+# 开发环境启动
 python app.py
+
+# 生产环境启动
+FLASK_ENV=production python app.py
 ```
 
-#### 7. 访问系统
-- 🌐 访问地址: http://localhost:5000
-- 👤 默认管理员: `admin` / `admin123`
+#### 5. 访问系统
+- 🌐 **访问地址**: http://localhost:32228
+- 👤 **默认管理员**: `admin` / `admin123`
+- 📱 **支持移动端**: 响应式设计，手机平板完美适配
 
-### 方式二：Docker部署
+## 🐳 Docker部署
 
-#### 1. 克隆并启动
-```bash
-git clone https://github.com/CiE-XinYuChen/LUCKY-Cookie.git
-cd LUCKY-Cookie
-
-# 启动所有服务
-docker-compose up -d
-```
-
-#### 2. 查看服务状态
-```bash
-# 查看容器状态
-docker-compose ps
-
-# 查看日志
-docker-compose logs -f web
-```
-
-#### 3. 访问系统
-- 🌐 访问地址: http://localhost:5000
-- 👤 默认管理员: `admin` / `admin123`
-
-## 🚀 部署指南
-
-### 生产环境部署
-
-#### 1. 服务器准备
-```bash
-# 更新系统
-sudo apt update && sudo apt upgrade -y
-
-# 安装必要软件
-sudo apt install -y python3 python3-pip python3-venv nginx postgresql redis-server git
-```
-
-#### 2. 数据库配置
-```bash
-# 创建数据库用户
-sudo -u postgres createuser --interactive dorm_user
-
-# 创建数据库
-sudo -u postgres createdb -O dorm_user dorm_lottery
-
-# 设置密码
-sudo -u postgres psql -c "ALTER USER dorm_user PASSWORD 'your_password';"
-```
-
-#### 3. 项目部署
+### 快速部署
 ```bash
 # 克隆项目
 git clone https://github.com/CiE-XinYuChen/LUCKY-Cookie.git
 cd LUCKY-Cookie
 
-# 创建虚拟环境
-python3 -m venv venv
-source venv/bin/activate
+# 启动容器
+docker-compose up -d
 
-# 安装依赖
-pip install -r requirements.txt
+# 查看状态
+docker-compose ps
 
-# 配置环境变量
-cp .env.example .env
-# 编辑 .env 配置生产环境参数
-
-# 初始化数据库
-psql -d dorm_lottery -f database/schema.sql
+# 查看日志
+docker-compose logs -f
 ```
 
-#### 4. 配置系统服务
-创建 `/etc/systemd/system/dorm-lottery.service`:
-```ini
-[Unit]
-Description=Dorm Lottery System
-After=network.target postgresql.service redis.service
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=/path/to/LUCKY-Cookie
-Environment=FLASK_ENV=production
-ExecStart=/path/to/LUCKY-Cookie/venv/bin/python app.py
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-```
-
-#### 5. 配置Nginx
-创建 `/etc/nginx/sites-available/dorm-lottery`:
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    # 安全头
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-XSS-Protection "1; mode=block" always;
-
-    # 静态文件
-    location /static/ {
-        alias /path/to/LUCKY-Cookie/frontend/static/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # 代理到Flask应用
-    location / {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        
-        # 超时设置
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-}
-```
-
-#### 6. 启动服务
-```bash
-# 启用并启动服务
-sudo systemctl enable dorm-lottery
-sudo systemctl start dorm-lottery
-
-# 配置Nginx
-sudo ln -s /etc/nginx/sites-available/dorm-lottery /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-
-# 检查服务状态
-sudo systemctl status dorm-lottery
-```
-
-### Docker生产部署
-
-#### 1. 配置生产环境
-编辑 `docker-compose.prod.yml`:
+### 自定义配置
+编辑 `docker-compose.yml`:
 ```yaml
 version: '3.8'
-
 services:
   web:
     build: .
     ports:
-      - "5000:5000"
+      - "32228:32228"  # 自定义端口映射
     environment:
       - FLASK_ENV=production
-      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/dorm_lottery
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY}
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-
-  db:
-    image: postgres:13
-    environment:
-      - POSTGRES_DB=dorm_lottery
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - SECRET_KEY=your-secret-key
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - ./data:/app/data  # 数据持久化
     restart: unless-stopped
-
-  redis:
-    image: redis:6-alpine
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - web
-    restart: unless-stopped
-
-volumes:
-  postgres_data:
-  redis_data:
 ```
-
-#### 2. 启动生产环境
-```bash
-# 设置环境变量
-export DB_PASSWORD="your_secure_password"
-export SECRET_KEY="your_very_secure_secret_key"
-export JWT_SECRET_KEY="your_jwt_secret_key"
-
-# 启动服务
-docker-compose -f docker-compose.prod.yml up -d
-```
-
-## 📸 系统截图
-
-### 用户界面
-| 登录页面 | 个人中心 |
-|:---:|:---:|
-| ![登录页面](screenshots/login.png) | ![个人中心](screenshots/dashboard.png) |
-
-| 宿舍选择 | 抽签结果 |
-|:---:|:---:|
-| ![宿舍选择](screenshots/room-selection.png) | ![抽签结果](screenshots/lottery.png) |
-
-### 管理后台
-| 用户管理 | 宿舍管理 |
-|:---:|:---:|
-| ![用户管理](screenshots/admin-users.png) | ![宿舍管理](screenshots/admin-rooms.png) |
 
 ## 📚 API文档
 
 ### 认证接口
 | 方法 | 路径 | 说明 | 参数 |
 |------|------|------|------|
-| POST | `/api/auth/login` | 用户登录 | `username`, `password` |
-| POST | `/api/auth/register` | 用户注册 | `username`, `password`, `name` |
-| GET | `/api/auth/profile` | 获取用户信息 | - |
-| POST | `/api/auth/change-password` | 修改密码 | `old_password`, `new_password` |
+| `POST` | `/api/auth/login` | 用户登录 | `username`, `password` |
+| `POST` | `/api/auth/register` | 用户注册 | `username`, `password`, `name` |
+| `GET` | `/api/auth/profile` | 获取用户信息 | - |
+| `POST` | `/api/auth/change-password` | 修改密码 | `old_password`, `new_password` |
+| `GET` | `/api/auth/verify-token` | 验证Token | - |
 
 ### 管理员接口
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
-| GET | `/api/admin/users` | 获取用户列表 | 管理员 |
-| POST | `/api/admin/users` | 创建单个用户 | 管理员 |
-| POST | `/api/admin/users/import` | 批量导入用户 | 管理员 |
-| DELETE | `/api/admin/users/{id}` | 删除用户 | 管理员 |
-| PUT | `/api/admin/users/{id}/password` | 重置密码 | 管理员 |
+| `GET` | `/api/admin/users` | 获取用户列表 | 管理员 |
+| `POST` | `/api/admin/users` | 创建用户 | 管理员 |
+| `POST` | `/api/admin/users/import` | 批量导入用户 | 管理员 |
+| `DELETE` | `/api/admin/users/{id}` | 删除用户 | 管理员 |
+| `PUT` | `/api/admin/users/{id}/password` | 重置密码 | 管理员 |
 
 ### 建筑管理接口
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
-| GET | `/api/admin/buildings` | 获取建筑列表 | 管理员 |
-| POST | `/api/admin/buildings` | 创建建筑 | 管理员 |
-| DELETE | `/api/admin/buildings/{id}` | 删除建筑 | 管理员 |
+| `GET` | `/api/admin/buildings` | 获取建筑列表 | 管理员 |
+| `POST` | `/api/admin/buildings` | 创建建筑 | 管理员 |
+| `DELETE` | `/api/admin/buildings/{id}` | 删除建筑 | 管理员 |
 
 ### 房间管理接口
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
-| GET | `/api/admin/rooms` | 获取房间列表 | 管理员 |
-| POST | `/api/admin/rooms` | 创建房间 | 管理员 |
-| POST | `/api/admin/rooms/import` | 批量导入房间 | 管理员 |
+| `GET` | `/api/admin/rooms` | 获取房间列表 | 管理员 |
+| `POST` | `/api/admin/rooms` | 创建房间 | 管理员 |
+| `POST` | `/api/admin/rooms/import` | 批量导入房间 | 管理员 |
+| `PUT` | `/api/admin/rooms/{id}` | 更新房间信息 | 管理员 |
+| `DELETE` | `/api/admin/rooms/{id}` | 删除房间 | 管理员 |
 
-### 寝室类型分配接口
+### 抽签系统接口
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
-| GET | `/api/admin/room-type-allocations` | 获取寝室类型分配 | 管理员 |
-| POST | `/api/admin/room-type-allocations` | 创建寝室类型分配 | 管理员 |
-| PUT | `/api/admin/room-type-allocations/{id}` | 修改寝室类型分配 | 管理员 |
-| DELETE | `/api/admin/room-type-allocations/{id}` | 删除寝室类型分配 | 管理员 |
-| GET | `/api/admin/unallocated-room-type-users` | 获取未分配寝室类型用户 | 管理员 |
-
-### 抽签接口
-| 方法 | 路径 | 说明 | 权限 |
-|------|------|------|------|
-| GET | `/api/lottery/settings` | 获取抽签设置 | 所有用户 |
-| POST | `/api/lottery/settings` | 创建抽签 | 管理员 |
-| POST | `/api/lottery/settings/{id}/publish` | 公布抽签 | 管理员 |
-| GET | `/api/lottery/results` | 获取抽签结果 | 所有用户 |
-| POST | `/api/admin/lottery/quick-draw` | 一键抽签 | 管理员 |
-| POST | `/api/admin/lottery/{id}/publish` | 发布抽签结果 | 管理员 |
-| DELETE | `/api/admin/lottery/{id}` | 删除抽签结果 | 管理员 |
-| GET | `/api/admin/lottery/results` | 获取所有抽签结果 | 管理员 |
+| `POST` | `/api/admin/lottery/quick-draw` | 一键抽签 | 管理员 |
+| `POST` | `/api/admin/lottery/{id}/publish` | 发布抽签结果 | 管理员 |
+| `DELETE` | `/api/admin/lottery/{id}` | 删除抽签结果 | 管理员 |
+| `GET` | `/api/lottery/results` | 获取个人抽签结果 | 学生 |
 
 ### 宿舍选择接口
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
-| GET | `/api/lottery/rooms/available` | 获取可用房间 | 学生 |
-| POST | `/api/room-selection/select` | 选择宿舍 | 学生 |
-| POST | `/api/room-selection/cancel` | 取消选择 | 学生 |
-| POST | `/api/room-selection/confirm` | 确认选择 | 学生 |
+| `GET` | `/api/lottery/buildings` | 获取可选楼栋 | 学生 |
+| `GET` | `/api/lottery/rooms/available` | 获取可用房间 | 学生 |
+| `POST` | `/api/room-selection/select` | 选择宿舍 | 学生 |
+| `POST` | `/api/room-selection/confirm` | 确认选择 | 学生 |
+| `POST` | `/api/room-selection/cancel` | 取消选择 | 学生 |
+| `GET` | `/api/lottery/my-selection` | 获取我的选择 | 学生 |
 
-## 💾 数据管理
+## 🛠️ 开发指南
 
-### 用户导入格式
-CSV文件必须包含以下列：
+### 本地开发环境
+```bash
+# 克隆代码
+git clone https://github.com/CiE-XinYuChen/LUCKY-Cookie.git
+cd LUCKY-Cookie
 
+# 安装开发依赖
+pip install -r requirements.txt
+
+# 设置开发环境变量
+export FLASK_ENV=development
+export FLASK_DEBUG=True
+
+# 启动开发服务器
+python app.py
+```
+
+### 项目结构说明
+```
+LUCKY-Cookie/
+├── 📄 app.py                 # 应用程序入口
+├── 📄 config.py              # 配置文件
+├── 📄 run.sh                 # 启动脚本
+├── 📄 requirements.txt       # Python依赖
+├── 📄 Dockerfile            # Docker镜像构建
+├── 📄 docker-compose.yml    # Docker Compose配置
+├── 📁 backend/              # 后端核心代码
+│   ├── 📄 __init__.py       # 包初始化
+│   ├── 📄 app.py            # Flask应用工厂
+│   ├── 📄 database.py       # 数据库操作
+│   ├── 📄 auth.py           # 认证模块
+│   ├── 📄 admin.py          # 管理功能
+│   ├── 📄 lottery.py        # 抽签功能
+│   └── 📄 room_selection.py # 宿舍选择
+├── 📁 frontend/             # 前端代码
+│   ├── 📁 templates/        # HTML模板
+│   │   ├── 📄 base.html     # 基础模板
+│   │   ├── 📄 index.html    # 主页
+│   │   ├── 📄 login.html    # 登录页
+│   │   ├── 📄 dashboard.html # 个人中心
+│   │   ├── 📄 room_selection.html # 宿舍选择
+│   │   └── 📄 admin.html    # 管理后台
+│   └── 📁 static/           # 静态资源
+│       ├── 📁 css/         # 样式文件
+│       │   └── 📄 material.css # Material Design样式
+│       └── 📁 js/          # JavaScript文件
+│           └── 📄 api.js    # API调用封装
+├── 📁 database/             # 数据库相关
+│   ├── 📄 schema.sql       # 数据库结构
+│   └── 📄 update_schema.sql # 结构更新
+├── 📁 uploads/              # 文件上传目录
+├── 📄 example_import_users.csv    # 用户导入示例
+├── 📄 example_import_rooms.csv    # 房间导入示例
+└── 📄 批量导入说明.md        # 导入功能说明
+```
+
+### 代码规范
+- **Python代码**: 遵循 PEP 8 规范
+- **JavaScript代码**: 使用 ES6+ 语法
+- **HTML/CSS**: 语义化标签，BEM命名规范
+- **API设计**: RESTful风格，统一错误码
+- **数据库**: 合理的表结构设计和索引
+
+### 测试指南
+```bash
+# 运行基础测试
+python -c "
+from backend.database import get_db
+conn = get_db()
+print('数据库连接正常' if conn else '数据库连接失败')
+"
+
+# 测试API接口
+curl -X POST http://localhost:32228/api/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin123"}'
+```
+
+## ⚙️ 配置说明
+
+### 环境变量配置
+```bash
+# 基础配置
+FLASK_ENV=production          # 运行环境 (development/production)
+FLASK_DEBUG=False            # 调试模式
+SECRET_KEY=your-secret-key   # Flask密钥
+JWT_SECRET_KEY=jwt-secret    # JWT密钥
+
+# 数据库配置
+DATABASE_PATH=data/app.db    # SQLite数据库文件路径
+
+# 服务器配置
+HOST=0.0.0.0                # 监听地址
+PORT=32228                  # 监听端口
+
+# 安全配置
+JWT_ACCESS_TOKEN_EXPIRES=24  # JWT过期时间(小时)
+UPLOAD_FOLDER=uploads        # 文件上传目录
+MAX_CONTENT_LENGTH=16MB      # 最大上传文件大小
+```
+
+### 数据导入格式
+
+#### 用户导入 CSV 格式
 ```csv
 name,username,password
 张三,zhangsan,123456
@@ -482,211 +420,188 @@ name,username,password
 王五,wangwu,123456
 ```
 
-**字段说明：**
-- `name`: 学生姓名（必填）
-- `username`: 用户名，系统内唯一（必填）
-- `password`: 密码，至少6位（必填）
-
-### 房间导入格式
-CSV文件必须包含以下列：
-
+#### 房间导入 CSV 格式
 ```csv
 building_name,room_number,room_type,max_capacity
 A栋,101,4,4
 A栋,102,4,4
 A栋,103,8,8
 B栋,201,4,4
-B栋,202,8,8
 ```
-
-**字段说明：**
-- `building_name`: 建筑名称，必须是已存在的建筑（必填）
-- `room_number`: 房间号，在同一建筑内唯一（必填）
-- `room_type`: 房间类型，只能是4或8（必填）
-- `max_capacity`: 最大容量，必须在1-8之间（必填）
-
-**注意事项：**
-- 建筑必须在导入房间前先创建
-- 系统会自动为每个房间创建对应数量的床位
-- 重复的房间会被跳过
 
 ### 数据库结构
 ```sql
--- 主要表结构
-users                   -- 用户表
-lottery_settings        -- 抽签设置
-buildings               -- 建筑表
-rooms                   -- 房间表
-beds                    -- 床位表
-lottery_results         -- 抽签结果
-room_type_allocations   -- 寝室类型分配（新增）
-room_selections         -- 宿舍选择
-allocation_history      -- 分配历史
+-- 核心表结构
+CREATE TABLE users (               -- 用户表
+    id INTEGER PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    is_admin BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE buildings (           -- 建筑表
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE rooms (               -- 房间表
+    id INTEGER PRIMARY KEY,
+    building_id INTEGER REFERENCES buildings(id),
+    room_number TEXT NOT NULL,
+    room_type INTEGER NOT NULL,
+    max_capacity INTEGER NOT NULL,
+    current_occupancy INTEGER DEFAULT 0,
+    is_available BOOLEAN DEFAULT TRUE
+);
+
+CREATE TABLE beds (                -- 床位表
+    id INTEGER PRIMARY KEY,
+    room_id INTEGER REFERENCES rooms(id),
+    bed_number INTEGER NOT NULL,
+    is_occupied BOOLEAN DEFAULT FALSE
+);
+
+CREATE TABLE lottery_results (     -- 抽签结果表
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    lottery_number INTEGER NOT NULL,
+    room_type INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE room_selections (     -- 宿舍选择表
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    bed_id INTEGER REFERENCES beds(id),
+    selected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_confirmed BOOLEAN DEFAULT FALSE
+);
 ```
-
-### 系统流程
-```mermaid
-graph TD
-    A[创建用户] --> B[分配寝室类型]
-    B --> C[进行抽签]
-    C --> D[发布抽签结果]
-    D --> E[学生选择具体宿舍]
-    E --> F[确认分配]
-    
-    B --> G[管理员手动分配寝室类型]
-    G --> E
-    
-    C --> H[管理员修改抽签结果]
-    H --> D
-```
-
-## 🛠️ 开发指南
-
-### 本地开发环境
-```bash
-# 安装开发依赖
-pip install -r requirements.txt
-
-# 启动开发服务器
-FLASK_ENV=development python app.py
-
-# 运行测试
-python -m pytest tests/
-
-# 代码格式化
-black backend/ frontend/
-```
-
-### 项目结构
-```
-LUCKY-Cookie/
-├── 📁 backend/              # 后端代码
-│   ├── 📄 app.py            # Flask应用工厂
-│   ├── 📄 models.py         # 数据模型
-│   ├── 📄 auth.py           # 认证模块
-│   ├── 📄 admin.py          # 管理员功能
-│   ├── 📄 lottery.py        # 抽签功能
-│   ├── 📄 room_selection.py # 宿舍选择
-│   └── 📄 redis_lock.py     # Redis锁机制
-├── 📁 frontend/             # 前端代码
-│   ├── 📁 templates/        # HTML模板
-│   └── 📁 static/           # 静态资源
-│       ├── 📁 css/         # 样式文件
-│       └── 📁 js/          # JavaScript文件
-├── 📁 database/             # 数据库文件
-│   └── 📄 schema.sql       # 数据库结构
-├── 📄 config.py            # 配置文件
-├── 📄 requirements.txt     # Python依赖
-├── 📄 app.py               # 应用入口
-├── 📄 run.sh               # 启动脚本
-├── 📄 docker-compose.yml   # Docker配置
-└── 📄 README.md            # 项目文档
-```
-
-### 代码规范
-- 遵循 [PEP 8](https://www.python.org/dev/peps/pep-0008/) Python代码规范
-- 使用 Type Hints 提高代码可读性
-- 编写单元测试和集成测试
-- 添加适当的注释和文档字符串
-- 使用有意义的变量和函数名
-
-### 贡献流程
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
 
 ## ❓ 常见问题
 
 ### 安装问题
 
-**Q: 数据库连接失败怎么办？**
-A: 请检查以下几点：
-- PostgreSQL服务是否正在运行
-- 数据库连接参数是否正确
-- 数据库用户是否有足够权限
-- 防火墙是否阻止了连接
+**Q: 启动时提示端口被占用怎么办？**
+```bash
+# 查看端口占用
+lsof -i :32228
+# 或者
+netstat -tulpn | grep 32228
 
-**Q: Redis连接失败怎么办？**
-A: 请检查：
-- Redis服务是否启动 (`sudo systemctl status redis`)
-- Redis配置是否正确
-- 网络连接是否正常
+# 终止占用进程
+kill -9 <PID>
+
+# 或者修改端口
+export PORT=32229
+python app.py
+```
+
+**Q: 数据库初始化失败怎么办？**
+```bash
+# 删除现有数据库文件
+rm -f data/app.db
+
+# 重新初始化
+python -c "from backend.database import init_db; init_db()"
+```
+
+**Q: 依赖安装失败怎么办？**
+```bash
+# 升级pip
+pip install --upgrade pip
+
+# 使用国内镜像源
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple/
+
+# 或者使用conda
+conda install --file requirements.txt
+```
 
 ### 使用问题
 
 **Q: 忘记管理员密码怎么办？**
-A: 可以通过数据库直接重置：
-```sql
--- 重置admin用户密码为admin123
-UPDATE users SET password_hash = '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewGv93/hYxhFtdS6' WHERE username = 'admin';
-```
-
-**Q: 多个用户同时选择同一床位怎么办？**
-A: 系统使用Redis分布式锁机制，确保同一时间只有一个用户能成功选择床位。其他用户会收到提示重新选择。
-
-**Q: 如何备份数据？**
-A: 使用PostgreSQL的pg_dump工具：
 ```bash
-pg_dump dorm_lottery > backup.sql
+# 重置管理员密码为admin123
+python -c "
+from backend.database import get_db
+import bcrypt
+conn = get_db()
+password_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+conn.execute('UPDATE users SET password_hash = ? WHERE username = ?', (password_hash, 'admin'))
+conn.commit()
+print('管理员密码已重置为: admin123')
+"
 ```
+
+**Q: CSV导入失败怎么办？**
+- 检查CSV文件编码是否为UTF-8
+- 确保列名与格式要求完全匹配
+- 检查数据中是否有特殊字符
+- 确保用户名不重复，房间号不重复
+
+**Q: 用户无法选择宿舍怎么办？**
+- 确认用户已有抽签结果
+- 检查抽签结果是否已发布
+- 确认有可用的对应类型房间
+- 检查用户权限是否正常
 
 ### 性能优化
 
 **Q: 系统响应慢怎么办？**
-A: 可以考虑以下优化：
-- 增加Redis内存
-- 优化数据库查询
-- 使用CDN加速静态资源
-- 增加服务器配置
+- 检查SQLite数据库文件大小
+- 清理无用的历史数据
+- 重启应用释放内存
+- 考虑升级服务器配置
 
-## 🔧 系统监控
+**Q: 并发用户多时出现错误怎么办？**
+- SQLite支持的并发有限，考虑升级到PostgreSQL
+- 增加应用实例使用负载均衡
+- 优化数据库查询和索引
 
-### 健康检查
-```bash
-# 检查Web服务
-curl http://localhost:5000/api/auth/verify-token
+## 🔄 更新日志
 
-# 检查数据库连接
-psql -d dorm_lottery -c "SELECT 1;"
+### v2.0.0 (最新版本)
+- 🎉 **完全重构个人中心页面** - 模块化架构，更好的错误处理
+- 🏠 **新增主页宿舍选择入口** - 大型按钮，更便于访问
+- 🔧 **修复楼栋筛选问题** - 用户现在可以正常看到楼栋选项
+- 🎨 **移除所有SVG图标** - 极简设计，专注内容
+- 🛡️ **添加ICP备案信息** - 符合中国法律法规要求
+- 🔄 **更改服务端口为32228** - 避免常用端口冲突
+- 🐛 **修复确认选择按钮失效** - 完善事件处理机制
+- 📱 **优化移动端体验** - 响应式设计改进
 
-# 检查Redis连接
-redis-cli ping
-```
-
-### 日志管理
-```bash
-# 查看应用日志
-sudo journalctl -u dorm-lottery -f
-
-# 查看Nginx日志
-sudo tail -f /var/log/nginx/access.log
-sudo tail -f /var/log/nginx/error.log
-
-# 查看PostgreSQL日志
-sudo tail -f /var/log/postgresql/postgresql-*.log
-```
+### v1.0.0
+- 🎯 初始版本发布
+- ✅ 基础用户管理功能
+- ✅ 抽签系统核心功能
+- ✅ 宿舍管理系统
+- ✅ 基础界面设计
 
 ## 🤝 贡献指南
 
-我们欢迎所有形式的贡献，包括但不限于：
+我们欢迎各种形式的贡献！
 
-- 🐛 报告Bug
-- 💡 提出新功能建议
-- 📖 完善文档
-- 🔧 提交代码修复
-- 🎨 改进界面设计
+### 贡献类型
+- 🐛 **Bug报告** - 发现问题请提交Issue
+- 💡 **功能建议** - 新功能想法和建议
+- 📖 **文档改进** - 完善文档和注释
+- 🔧 **代码贡献** - 修复Bug或添加功能
+- 🎨 **界面设计** - UI/UX改进建议
 
-### 如何贡献
-1. 查看 [Issues](https://github.com/CiE-XinYuChen/LUCKY-Cookie/issues) 了解当前需要帮助的内容
-2. Fork 仓库并创建新分支
-3. 进行开发并测试
-4. 提交 Pull Request
+### 贡献流程
+1. Fork本仓库
+2. 创建特性分支 `git checkout -b feature/AmazingFeature`
+3. 提交更改 `git commit -m 'Add some AmazingFeature'`
+4. 推送分支 `git push origin feature/AmazingFeature`
+5. 创建Pull Request
 
 ### 开发环境设置
 ```bash
-# 克隆你的fork
+# Fork并克隆
 git clone https://github.com/your-username/LUCKY-Cookie.git
 cd LUCKY-Cookie
 
@@ -694,11 +609,13 @@ cd LUCKY-Cookie
 git remote add upstream https://github.com/CiE-XinYuChen/LUCKY-Cookie.git
 
 # 创建开发分支
-git checkout -b feature/your-feature-name
+git checkout -b feature/your-feature
 
 # 安装开发依赖
 pip install -r requirements.txt
-pip install -r requirements-dev.txt  # 如果有的话
+
+# 启动开发服务器
+FLASK_ENV=development python app.py
 ```
 
 ## 📜 许可证
@@ -731,19 +648,21 @@ SOFTWARE.
 
 ## 🙏 致谢
 
-感谢以下开源项目和贡献者：
+感谢以下技术和项目的支持：
 
 - [Flask](https://flask.palletsprojects.com/) - Python Web框架
-- [PostgreSQL](https://www.postgresql.org/) - 数据库系统
-- [Redis](https://redis.io/) - 内存数据库
+- [SQLite](https://www.sqlite.org/) - 轻量级数据库
 - [Material Design](https://material.io/) - 设计系统
-- 所有贡献者和用户的支持
+- [JWT](https://jwt.io/) - 安全认证标准
+- [bcrypt](https://github.com/pyca/bcrypt/) - 密码加密
+- 所有贡献者和用户的支持与反馈
 
 ## 📞 联系我们
 
-- 🐛 报告问题: [GitHub Issues](https://github.com/CiE-XinYuChen/LUCKY-Cookie/issues)
-- 💬 讨论: [GitHub Discussions](https://github.com/CiE-XinYuChen/LUCKY-Cookie/discussions)
-- 📧 邮件: [your-email@example.com](mailto:your-email@example.com)
+- 🐛 **问题报告**: [GitHub Issues](https://github.com/CiE-XinYuChen/LUCKY-Cookie/issues)
+- 💬 **功能讨论**: [GitHub Discussions](https://github.com/CiE-XinYuChen/LUCKY-Cookie/discussions)
+- 📧 **邮件联系**: [your-email@example.com](mailto:your-email@example.com)
+- 🌟 **关注项目**: 点击右上角 ⭐ Star 支持我们
 
 ---
 
@@ -753,6 +672,6 @@ SOFTWARE.
 
 Made with ❤️ by [CiE-XinYuChen](https://github.com/CiE-XinYuChen)
 
-如果这个项目对您有帮助，请考虑给我们一个 ⭐
+**如果这个项目对您有帮助，请给我们一个 ⭐**
 
 </div>
