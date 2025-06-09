@@ -358,6 +358,53 @@
     </div>
 </div>
 
+<!-- 编辑宿舍分配模态框 -->
+<div id="editAllocationModal" class="modal-overlay" style="display: none;">
+    <div class="modal" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3 class="modal-title">编辑宿舍分配</h3>
+        </div>
+        <div class="modal-content">
+            <div style="display: flex; gap: 24px;">
+                <!-- 左侧：当前分配信息 -->
+                <div style="flex: 1;">
+                    <h4>当前分配信息</h4>
+                    <div id="currentAllocationInfo" style="padding: 12px; background-color: #f5f5f5; border-radius: 4px; margin-bottom: 16px;">
+                        <!-- 当前分配信息将通过JavaScript加载 -->
+                    </div>
+                </div>
+                
+                <!-- 右侧：新的房间床位选择 -->
+                <div style="flex: 1;">
+                    <h4>选择新的房间和床位</h4>
+                    <div style="margin-bottom: 16px;">
+                        <label class="form-label">建筑</label>
+                        <select id="editAllocationBuildingSelect" class="form-input" style="width: 100%; margin-bottom: 8px;" onchange="loadRoomsForEditAllocation()">
+                            <option value="">请选择建筑</option>
+                        </select>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label class="form-label">房间</label>
+                        <select id="editAllocationRoomSelect" class="form-input" style="width: 100%;" onchange="loadBedsForEditAllocation()">
+                            <option value="">请选择房间</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">床位</label>
+                        <div id="editAllocationBedsTable" style="max-height: 200px; overflow-y: auto;">
+                            <!-- 床位表格 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideEditAllocationModal()">取消</button>
+            <button type="button" class="btn btn-primary" id="confirmEditAllocationBtn" onclick="confirmEditAllocation()" disabled>确认修改</button>
+        </div>
+    </div>
+</div>
+
 <!-- 抽签结果确认模态框 -->
 <div id="lotteryConfirmModal" class="modal-overlay" style="display: none;">
     <div class="modal" style="max-width: 900px;">
@@ -1027,6 +1074,189 @@ async function deleteAllocation(allocationId) {
         await api.deleteAllocation(allocationId);
         showAlert('分配删除成功', 'success');
         loadAllocations();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+// 编辑分配相关函数
+let currentEditAllocationId = null;
+let selectedEditBedId = null;
+
+async function editAllocation(allocationId) {
+    currentEditAllocationId = allocationId;
+    selectedEditBedId = null;
+    
+    try {
+        // 获取当前分配详情
+        const response = await api.getAllocations(1, 1000); // 获取所有分配来找到指定的分配
+        const allocation = response.allocations.find(a => a.id === allocationId);
+        
+        if (!allocation) {
+            showAlert('分配记录不存在', 'error');
+            return;
+        }
+        
+        // 显示当前分配信息
+        document.getElementById('currentAllocationInfo').innerHTML = `
+            <div><strong>学生：</strong>${allocation.user_name}</div>
+            <div><strong>当前宿舍：</strong>${allocation.building_name} ${allocation.room_number}室 ${allocation.bed_number}号床</div>
+            <div><strong>确认状态：</strong>${allocation.is_confirmed ? '已确认' : '未确认'}</div>
+        `;
+        
+        // 重置选择
+        resetEditAllocationSelection();
+        
+        // 加载建筑列表
+        await loadBuildingsForEditAllocation();
+        
+        // 显示模态框
+        document.getElementById('editAllocationModal').style.display = 'flex';
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+function hideEditAllocationModal() {
+    document.getElementById('editAllocationModal').style.display = 'none';
+    resetEditAllocationSelection();
+}
+
+function resetEditAllocationSelection() {
+    selectedEditBedId = null;
+    document.getElementById('editAllocationBuildingSelect').value = '';
+    document.getElementById('editAllocationRoomSelect').innerHTML = '<option value="">请选择房间</option>';
+    document.getElementById('editAllocationBedsTable').innerHTML = '';
+    document.getElementById('confirmEditAllocationBtn').disabled = true;
+}
+
+async function loadBuildingsForEditAllocation() {
+    try {
+        const response = await api.getBuildings();
+        const select = document.getElementById('editAllocationBuildingSelect');
+        
+        select.innerHTML = '<option value="">请选择建筑</option>';
+        response.buildings.forEach(building => {
+            select.innerHTML += `<option value="${building.id}">${building.name}</option>`;
+        });
+    } catch (error) {
+        showAlert('获取建筑列表失败', 'error');
+    }
+}
+
+async function loadRoomsForEditAllocation() {
+    const buildingId = document.getElementById('editAllocationBuildingSelect').value;
+    const roomSelect = document.getElementById('editAllocationRoomSelect');
+    
+    if (!buildingId) {
+        roomSelect.innerHTML = '<option value="">请选择房间</option>';
+        document.getElementById('editAllocationBedsTable').innerHTML = '';
+        return;
+    }
+    
+    try {
+        // 获取该建筑的所有房间
+        const response = await api.getRooms(buildingId);
+        
+        roomSelect.innerHTML = '<option value="">请选择房间</option>';
+        response.rooms.forEach(room => {
+            if (room.available_beds > 0) { // 只显示有空余床位的房间
+                roomSelect.innerHTML += `<option value="${room.id}">${room.room_number}室 (${room.room_type}人间, ${room.available_beds}个空床位)</option>`;
+            }
+        });
+    } catch (error) {
+        showAlert('获取房间列表失败', 'error');
+    }
+}
+
+async function loadBedsForEditAllocation() {
+    const roomId = document.getElementById('editAllocationRoomSelect').value;
+    const bedsTable = document.getElementById('editAllocationBedsTable');
+    
+    if (!roomId) {
+        bedsTable.innerHTML = '';
+        return;
+    }
+    
+    try {
+        // 获取房间详情包括床位信息
+        const response = await api.get(`/api/admin/rooms/${roomId}`);
+        const room = response.room;
+        
+        if (!room.beds || room.beds.length === 0) {
+            bedsTable.innerHTML = '<p>该房间没有床位信息</p>';
+            return;
+        }
+        
+        // 只显示空余的床位
+        const availableBeds = room.beds.filter(bed => !bed.is_occupied);
+        
+        if (availableBeds.length === 0) {
+            bedsTable.innerHTML = '<p>该房间没有空余床位</p>';
+            return;
+        }
+        
+        const table = `
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>床位号</th>
+                        <th>状态</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${availableBeds.map(bed => `
+                        <tr>
+                            <td>${bed.bed_number}号床</td>
+                            <td>空闲</td>
+                            <td>
+                                <button class="btn btn-primary btn-sm" onclick="selectEditBed(${bed.id}, '${bed.bed_number}')">选择</button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        bedsTable.innerHTML = table;
+    } catch (error) {
+        showAlert('获取床位信息失败', 'error');
+    }
+}
+
+function selectEditBed(bedId, bedNumber) {
+    selectedEditBedId = bedId;
+    
+    // 更新按钮状态
+    const buttons = document.querySelectorAll('#editAllocationBedsTable .btn-primary');
+    buttons.forEach(btn => {
+        btn.textContent = '选择';
+        btn.className = 'btn btn-primary btn-sm';
+    });
+    
+    // 高亮选中的床位
+    event.target.textContent = '已选择';
+    event.target.className = 'btn btn-success btn-sm';
+    
+    // 启用确认按钮
+    document.getElementById('confirmEditAllocationBtn').disabled = false;
+}
+
+async function confirmEditAllocation() {
+    if (!selectedEditBedId) {
+        showAlert('请选择床位', 'error');
+        return;
+    }
+    
+    try {
+        const response = await api.updateAllocation(currentEditAllocationId, {
+            bed_id: selectedEditBedId
+        });
+        
+        showAlert('宿舍分配修改成功', 'success');
+        hideEditAllocationModal();
+        loadAllocations(); // 重新加载分配列表
     } catch (error) {
         showAlert(error.message, 'error');
     }

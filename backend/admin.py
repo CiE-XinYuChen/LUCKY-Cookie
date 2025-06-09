@@ -1201,6 +1201,8 @@ def update_allocation(allocation_id):
     if not data:
         return jsonify({'error': '请求数据不能为空'}), 400
     
+    current_user_id = get_jwt_identity()
+    
     try:
         with db.get_db_connection() as conn:
             c = conn.cursor()
@@ -1211,7 +1213,59 @@ def update_allocation(allocation_id):
             if not allocation:
                 return jsonify({'error': '分配记录不存在'}), 404
             
-            # Update fields
+            # Update bed allocation
+            if 'bed_id' in data:
+                new_bed_id = data['bed_id']
+                
+                # Check if new bed is available
+                c.execute('SELECT * FROM beds WHERE id = ?', (new_bed_id,))
+                new_bed = c.fetchone()
+                if not new_bed:
+                    return jsonify({'error': '床位不存在'}), 404
+                
+                if new_bed['is_occupied']:
+                    return jsonify({'error': '床位已被占用'}), 409
+                
+                # Check if bed is already selected by another user
+                c.execute('SELECT id FROM room_selections WHERE bed_id = ? AND id != ?', (new_bed_id, allocation_id))
+                if c.fetchone():
+                    return jsonify({'error': '床位已被其他用户选择'}), 409
+                
+                # Get old bed info for history
+                old_bed_id = allocation['bed_id']
+                old_room_id = allocation['room_id']
+                
+                # Release old bed
+                c.execute('UPDATE beds SET is_occupied = 0 WHERE id = ?', (old_bed_id,))
+                
+                # Update room occupancy for old room
+                c.execute('''
+                    UPDATE rooms 
+                    SET current_occupancy = (SELECT COUNT(*) FROM beds WHERE room_id = ? AND is_occupied = 1)
+                    WHERE id = ?
+                ''', (old_room_id, old_room_id))
+                
+                # Occupy new bed
+                c.execute('UPDATE beds SET is_occupied = 1 WHERE id = ?', (new_bed_id,))
+                
+                # Update allocation
+                c.execute('UPDATE room_selections SET room_id = ?, bed_id = ? WHERE id = ?', 
+                         (new_bed['room_id'], new_bed_id, allocation_id))
+                
+                # Update room occupancy for new room
+                c.execute('''
+                    UPDATE rooms 
+                    SET current_occupancy = (SELECT COUNT(*) FROM beds WHERE room_id = ? AND is_occupied = 1)
+                    WHERE id = ?
+                ''', (new_bed['room_id'], new_bed['room_id']))
+                
+                # Add history record
+                c.execute('''
+                    INSERT INTO allocation_history (user_id, room_id, bed_id, action, operated_by, notes)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (allocation['user_id'], new_bed['room_id'], new_bed_id, 'modified', current_user_id, '管理员修改分配'))
+            
+            # Update confirmation status
             if 'is_confirmed' in data:
                 c.execute('UPDATE room_selections SET is_confirmed = ? WHERE id = ?', 
                          (1 if data['is_confirmed'] else 0, allocation_id))
