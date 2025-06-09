@@ -1159,7 +1159,16 @@ h4 {
 
 /* Body layout adjustment for footer */
 body {
-    display: flex;
-    flex-direction: column;
     min-height: 100vh;
+    position: relative;
+    padding-bottom: 100px; /* Space for footer */
+}
+
+/* Make footer stick to bottom */
+.site-footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
 }
