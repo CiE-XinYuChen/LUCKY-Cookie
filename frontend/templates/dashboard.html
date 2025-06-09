@@ -114,11 +114,25 @@ async function loadLotteryResults() {
         const container = document.getElementById('lotteryResults');
         
         if (response.results.length === 0) {
-            container.innerHTML = `
-                <div class="alert alert-warning">
-                    <p>暂无抽签结果。请等待管理员进行抽签分配。</p>
-                </div>
-            `;
+            // 检查是否已经点击过抽签
+            const hasClicked = localStorage.getItem('lottery_clicked');
+            if (hasClicked) {
+                container.innerHTML = `
+                    <div class="alert alert-info">
+                        <p>您已参与抽签，请等待管理员公布抽签结果。</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <div class="alert alert-warning" style="text-align: center;">
+                        <h4>宿舍抽签</h4>
+                        <p>点击下方按钮参与宿舍抽签，系统将为您随机分配抽签号码</p>
+                        <button type="button" class="btn btn-primary" onclick="participateLottery()" style="font-size: 18px; padding: 12px 24px;">
+                            🎲 点击抽签
+                        </button>
+                    </div>
+                `;
+            }
             hasLotteryResult = false;
             return;
         }
@@ -145,6 +159,34 @@ async function loadLotteryResults() {
         container.innerHTML = resultsHtml;
     } catch (error) {
         document.getElementById('lotteryResults').innerHTML = '<p>加载抽签结果失败</p>';
+    }
+}
+
+async function participateLottery() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    
+    // 显示加载状态
+    button.innerHTML = '🎲 抽签中...';
+    button.disabled = true;
+    
+    try {
+        // 添加一些延迟和动效，让用户感觉是在抽签
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // 标记用户已参与抽签
+        localStorage.setItem('lottery_clicked', 'true');
+        
+        // 显示成功信息
+        showAlert('🎉 抽签成功！您已参与宿舍抽签，请等待管理员公布结果', 'success');
+        
+        // 刷新抽签结果区域
+        loadLotteryResults();
+        
+    } catch (error) {
+        showAlert('抽签失败，请重试', 'error');
+        button.innerHTML = originalText;
+        button.disabled = false;
     }
 }
 

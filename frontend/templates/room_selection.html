@@ -243,12 +243,19 @@ async function loadAvailableRooms() {
                     <div>
                         <strong>可选床位：</strong>
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
-                            ${room.beds.filter(bed => !bed.is_occupied).map(bed => `
-                                <button class="btn btn-outline" 
-                                        onclick="selectBed(${bed.id}, '${room.building_name}', '${room.room_number}', '${bed.bed_number}', ${JSON.stringify(room.occupied_users).replace(/"/g, '&quot;')})">
-                                    床位 ${bed.bed_number}
-                                </button>
-                            `).join('')}
+                            ${room.beds.filter(bed => !bed.is_occupied).map(bed => {
+                                let bedLabel = `床位 ${bed.bed_number}`;
+                                // 在八人间中，床位1-4标注为下铺
+                                if (room.room_type === '8' && bed.bed_number >= 1 && bed.bed_number <= 4) {
+                                    bedLabel += ' (下铺)';
+                                }
+                                return `
+                                    <button class="btn btn-outline" 
+                                            onclick="selectBed(${bed.id}, '${room.building_name}', '${room.room_number}', '${bed.bed_number}', '${room.room_type}', ${JSON.stringify(room.occupied_users).replace(/"/g, '&quot;')})">
+                                        ${bedLabel}
+                                    </button>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
                 </div>
@@ -261,11 +268,17 @@ async function loadAvailableRooms() {
     }
 }
 
-function selectBed(bedId, buildingName, roomNumber, bedNumber, occupiedUsers) {
+function selectBed(bedId, buildingName, roomNumber, bedNumber, roomType, occupiedUsers) {
     
     selectedBedId = bedId;
     
-    let confirmMessage = `确定要选择 ${buildingName} ${roomNumber} 房间的 ${bedNumber} 号床位吗？`;
+    let bedLabel = `${bedNumber} 号床位`;
+    // 在八人间中，床位1-4标注为下铺
+    if (roomType === '8' && bedNumber >= 1 && bedNumber <= 4) {
+        bedLabel += ' (下铺)';
+    }
+    
+    let confirmMessage = `确定要选择 ${buildingName} ${roomNumber} 房间的 ${bedLabel}吗？`;
     if (myCurrentSelection) {
         confirmMessage += myCurrentSelection.is_confirmed ? 
             '\n\n注意：这将取消您已确认的选择并选择新的床位。' : 
