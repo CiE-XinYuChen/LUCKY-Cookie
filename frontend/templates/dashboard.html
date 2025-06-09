@@ -10,18 +10,7 @@
         
         <!-- 快速状态概览 -->
         <div class="stat-grid" style="margin-top: 1.5rem;" id="statusOverview">
-            <div class="stat-card" style="text-align: center;">
-                <div class="stat-label">加载中...</div>
-                <div class="stat-value">正在获取状态</div>
-            </div>
-        </div>
-        
-        <!-- 调试信息 -->
-        <div id="debugInfo" style="background: #f0f0f0; padding: 1rem; margin-top: 1rem; border-radius: 4px; font-family: monospace;">
-            <strong>调试信息：</strong><br>
-            JavaScript状态: <span id="jsStatus">等待执行</span><br>
-            API对象: <span id="apiStatus">检查中</span><br>
-            Token状态: <span id="tokenStatus">检查中</span><br>
+            <!-- 状态概览将通过JavaScript加载 -->
         </div>
     </div>
     
@@ -38,10 +27,7 @@
         </div>
         <div class="card-content">
             <div id="userInfo">
-                <div class="stat-item" style="border-bottom: none; padding: 0;">
-                    <span class="stat-label">加载中...</span>
-                    <span class="stat-value">正在获取个人信息</span>
-                </div>
+                <!-- 用户信息将通过JavaScript加载 -->
             </div>
             <button type="button" class="btn btn-outline" onclick="showChangePasswordModal()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -66,10 +52,7 @@
             </h3>
         </div>
         <div class="card-content" id="lotteryResults">
-            <div class="stat-item" style="border-bottom: none; padding: 0;">
-                <span class="stat-label">加载中...</span>
-                <span class="stat-value">正在获取抽签结果</span>
-            </div>
+            <!-- 抽签结果将通过JavaScript加载 -->
         </div>
     </div>
 
@@ -85,10 +68,7 @@
             </h3>
         </div>
         <div class="card-content" id="roomSelection">
-            <div class="stat-item" style="border-bottom: none; padding: 0;">
-                <span class="stat-label">加载中...</span>
-                <span class="stat-value">正在获取宿舍选择</span>
-            </div>
+            <!-- 宿舍选择将通过JavaScript加载 -->
         </div>
     </div>
 </div>
@@ -125,102 +105,24 @@
 
 {% block scripts %}
 <script>
-// 立即执行测试 - 最基础的检查
-console.log('=== Dashboard script starting ===');
-alert('Script loaded!'); // 强制弹窗确认脚本执行
-
-// 立即更新页面状态，不等待DOM加载
-try {
-    document.getElementById('jsStatus').textContent = '脚本已加载';
-    console.log('Successfully updated jsStatus');
-} catch (e) {
-    console.log('DOM not ready yet, error:', e);
-}
-
 let userData = null;
 let hasLotteryResult = false;
 
-// 使用多种方式确保代码执行
-function initDashboard() {
-    console.log('Dashboard initialization started');
+document.addEventListener('DOMContentLoaded', function() {
+    if (!requireAuth()) return;
     
-    // 更新调试信息
-    const jsStatusElement = document.getElementById('jsStatus');
-    if (jsStatusElement) {
-        jsStatusElement.textContent = 'DOMContentLoaded已触发';
-    }
-    
-    // 添加基础检查
-    console.log('typeof api:', typeof api);
-    console.log('window.api:', window.api);
-    
-    // 检查API对象是否存在
-    if (typeof api === 'undefined') {
-        console.error('API object not found');
-        document.getElementById('apiStatus').textContent = '未找到';
-        showError('系统初始化失败，请刷新页面重试');
-        return;
-    }
-    
-    document.getElementById('apiStatus').textContent = '已找到';
-    
-    // 检查token
-    console.log('Current token:', api.token ? 'exists' : 'missing');
-    document.getElementById('tokenStatus').textContent = api.token ? '存在' : '缺失';
-    
-    if (!api.token) {
-        console.log('No token found, redirecting to login');
-        showError('您尚未登录，即将跳转到登录页面...');
-        setTimeout(() => {
-            window.location.href = '/login';
-        }, 2000);
-        return;
-    }
-    
-    console.log('Starting to load dashboard components');
-    
-    // 串行加载，避免并发问题
-    loadUserInfo()
-        .then(() => loadLotteryResults())
-        .then(() => loadRoomSelection())
-        .catch(error => {
-            console.error('Error in dashboard loading chain:', error);
-            showError('加载用户信息失败: ' + error.message);
-        });
-}
-
-function showError(message) {
-    const elements = ['statusOverview', 'userInfo', 'lotteryResults', 'roomSelection'];
-    elements.forEach(id => {
-        const element = document.getElementById(id);
-        if (element) {
-            element.innerHTML = `
-                <div class="alert alert-error">
-                    <p>${message}</p>
-                    <button class="btn btn-outline" onclick="location.reload()">刷新页面</button>
-                </div>
-            `;
-        }
+    loadUserInfo();
+    loadLotteryResults().then(() => {
+        loadRoomSelection();
     });
-}
+});
 
 async function loadUserInfo() {
-    console.log('Loading user info...');
     try {
-        // 先验证token是否有效
-        await api.verifyToken();
-        
         const response = await api.getProfile();
-        console.log('Profile response:', response);
         userData = response.user;
         
-        const userInfoElement = document.getElementById('userInfo');
-        if (!userInfoElement) {
-            console.error('userInfo element not found');
-            return;
-        }
-        
-        userInfoElement.innerHTML = `
+        document.getElementById('userInfo').innerHTML = `
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
                 <div class="stat-item" style="border-bottom: none; padding: 0;">
                     <span class="stat-label">
@@ -259,37 +161,16 @@ async function loadUserInfo() {
         `;
         
         // 加载状态概览
-        console.log('Loading status overview...');
         loadStatusOverview();
-        console.log('User info loaded successfully');
     } catch (error) {
-        console.error('Error loading user info:', error);
         showAlert(error.message, 'error');
-        
-        // 显示错误状态
-        const userInfoElement = document.getElementById('userInfo');
-        if (userInfoElement) {
-            userInfoElement.innerHTML = `
-                <div class="alert alert-error">
-                    <p>加载个人信息失败: ${error.message}</p>
-                    <button class="btn btn-outline" onclick="loadUserInfo()">重试</button>
-                </div>
-            `;
-        }
     }
 }
 
 async function loadLotteryResults() {
-    console.log('Loading lottery results...');
     try {
         const response = await api.getLotteryResults();
-        console.log('Lottery results response:', response);
-        
         const container = document.getElementById('lotteryResults');
-        if (!container) {
-            console.error('lotteryResults element not found');
-            return;
-        }
         
         if (response.results.length === 0) {
             // 检查是否已经点击过抽签
@@ -336,9 +217,6 @@ async function loadLotteryResults() {
         
         hasLotteryResult = true;
         
-        // 检查抽签结果是否已发布
-        const hasPublishedResult = response.results.some(result => result.is_published);
-        
         const resultsHtml = response.results.map(result => `
             <div class="stat-card" style="margin-bottom: 1rem; padding: 1.5rem;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1rem;">
@@ -356,41 +234,21 @@ async function loadLotteryResults() {
                     </div>
                 </div>
                 ${result.room_type ? `
-                    ${result.is_published ? `
-                        <div class="alert alert-info" style="margin-bottom: 0;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="16" x2="12" y2="12"></line>
-                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                            </svg>
-                            您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
-                        </div>
-                    ` : `
-                        <div class="alert alert-warning" style="margin-bottom: 0;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 2v20"></path>
-                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                            </svg>
-                            您已被分配到${result.room_type}人间
-                        </div>
-                    `}
+                    <div class="alert alert-info" style="margin-bottom: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
+                    </div>
                 ` : ''}
             </div>
         `).join('');
         
         container.innerHTML = resultsHtml;
-        console.log('Lottery results loaded successfully');
     } catch (error) {
-        console.error('Error loading lottery results:', error);
-        const container = document.getElementById('lotteryResults');
-        if (container) {
-            container.innerHTML = `
-                <div class="alert alert-error">
-                    <p>加载抽签结果失败: ${error.message}</p>
-                    <button class="btn btn-outline" onclick="loadLotteryResults()">重试</button>
-                </div>
-            `;
-        }
+        document.getElementById('lotteryResults').innerHTML = '<p>加载抽签结果失败</p>';
     }
 }
 
@@ -423,16 +281,9 @@ async function participateLottery() {
 }
 
 async function loadRoomSelection() {
-    console.log('Loading room selection...');
     try {
         const response = await api.getMySelection();
-        console.log('Room selection response:', response);
-        
         const container = document.getElementById('roomSelection');
-        if (!container) {
-            console.error('roomSelection element not found');
-            return;
-        }
         
         if (!response.selection) {
             if (!hasLotteryResult) {
@@ -500,18 +351,8 @@ async function loadRoomSelection() {
                 </div>
             ` : '<div class="alert alert-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>您的宿舍选择已确认</div>'}
         `;
-        console.log('Room selection loaded successfully');
     } catch (error) {
-        console.error('Error loading room selection:', error);
-        const container = document.getElementById('roomSelection');
-        if (container) {
-            container.innerHTML = `
-                <div class="alert alert-error">
-                    <p>加载宿舍选择失败: ${error.message}</p>
-                    <button class="btn btn-outline" onclick="loadRoomSelection()">重试</button>
-                </div>
-            `;
-        }
+        document.getElementById('roomSelection').innerHTML = '<p>加载宿舍选择失败</p>';
     }
 }
 
@@ -566,7 +407,6 @@ document.getElementById('changePasswordModal').addEventListener('click', functio
 });
 
 async function loadStatusOverview() {
-    console.log('Loading status overview...');
     try {
         // 获取抽签结果状态
         let lotteryStatus = '未参与';
@@ -652,40 +492,16 @@ async function loadStatusOverview() {
                 <div class="stat-value" style="color: var(--info-color);">学生用户</div>
             </div>
         `;
-        console.log('Status overview loaded successfully');
     } catch (error) {
         console.error('加载状态概览失败:', error);
-        const statusElement = document.getElementById('statusOverview');
-        if (statusElement) {
-            statusElement.innerHTML = `
-                <div class="stat-card" style="text-align: center;">
-                    <div class="stat-label">状态加载失败</div>
-                    <div class="stat-value">请刷新页面重试</div>
-                    <button class="btn btn-outline" onclick="loadStatusOverview()" style="margin-top: 0.5rem;">重试</button>
-                </div>
-            `;
-        }
+        document.getElementById('statusOverview').innerHTML = `
+            <div class="stat-card" style="text-align: center;">
+                <div class="stat-label">状态加载失败</div>
+                <div class="stat-value">请刷新页面重试</div>
+            </div>
+        `;
     }
 }
-
-// 多种方式确保初始化函数被调用
-document.addEventListener('DOMContentLoaded', initDashboard);
-
-// 如果DOM已经加载完成，立即执行
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initDashboard);
-} else {
-    // DOM已经加载完成
-    initDashboard();
-}
-
-// 备用方式：使用setTimeout确保执行
-setTimeout(function() {
-    if (document.getElementById('jsStatus').textContent === '等待执行') {
-        console.log('Using setTimeout fallback to initialize');
-        initDashboard();
-    }
-}, 1000);
 </script>
 
 {% endblock %}
