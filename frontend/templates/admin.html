@@ -1636,12 +1636,12 @@ async function performQuickLottery() {
 
 function showLotteryConfirmDialog(lotteryData) {
     let roomTypeInfo = '';
-    if (lotteryData.room_4_groups && lotteryData.room_6_groups) {
-        roomTypeInfo = `混合类型 (${lotteryData.room_4_groups}个四人间组, ${lotteryData.room_6_groups}个八人间组)`;
-    } else if (lotteryData.room_4_groups) {
-        roomTypeInfo = `四人间 (${lotteryData.room_4_groups}个组)`;
-    } else if (lotteryData.room_6_groups) {
-        roomTypeInfo = `八人间 (${lotteryData.room_6_groups}个组)`;
+    if (lotteryData.room_4_users && lotteryData.room_8_users) {
+        roomTypeInfo = `混合类型 (${lotteryData.room_4_users}人分配四人间, ${lotteryData.room_8_users}人分配八人间)`;
+    } else if (lotteryData.room_4_users) {
+        roomTypeInfo = `四人间 (${lotteryData.room_4_users}人)`;
+    } else if (lotteryData.room_8_users) {
+        roomTypeInfo = `八人间 (${lotteryData.room_8_users}人)`;
     } else if (lotteryData.room_type) {
         roomTypeInfo = `${lotteryData.room_type}人间`;
     } else {
@@ -1771,7 +1771,6 @@ async function loadLotteryResults() {
                                     <tr>
                                         <th>抽签号</th>
                                         <th>姓名</th>
-                                        <th>分组</th>
                                         <th>房间类型</th>
                                         ${setting && !setting.is_published ? '<th>操作</th>' : ''}
                                     </tr>
@@ -1781,15 +1780,14 @@ async function loadLotteryResults() {
                                         <tr>
                                             <td><strong>${result.lottery_number}</strong></td>
                                             <td>${result.user_name}</td>
-                                            <td>${result.group_number || '未分组'}</td>
                                             <td>${result.room_type ? `${result.room_type}人间` : '未分配'}</td>
                                             ${setting && !setting.is_published ? `
                                                 <td>
-                                                    <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.group_number || ''}', '${result.room_type || ''}')">编辑</button>
+                                                    <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.room_type || ''}')">编辑</button>
                                                 </td>
                                             ` : ''}
                                         </tr>
-                                    `).join('')}
+                                    `).join(''))
                                 </tbody>
                             </table>
                         </div>
@@ -1829,7 +1827,7 @@ async function deleteLottery(lotteryId) {
     }
 }
 
-async function editLotteryResultInModal(resultId, currentLotteryNumber, currentGroupNumber, currentRoomType) {
+async function editLotteryResultInModal(resultId, currentLotteryNumber, currentRoomType) {
     const newLotteryNumber = prompt('请输入新的抽签号码：', currentLotteryNumber);
     if (newLotteryNumber === null || newLotteryNumber === '') {
         return;
@@ -1840,10 +1838,9 @@ async function editLotteryResultInModal(resultId, currentLotteryNumber, currentG
         return;
     }
     
-    const newGroupNumber = prompt('请输入新的分组号（可留空）：', currentGroupNumber);
-    const newRoomType = prompt('请输入房间类型（4或8，可留空）：', currentRoomType);
+    const newRoomType = prompt('请输入房间类型（4或8）：', currentRoomType);
     
-    if (newRoomType && !['4', '8', ''].includes(newRoomType)) {
+    if (newRoomType && !['4', '8'].includes(newRoomType)) {
         showAlert('房间类型只能是4或8', 'error');
         return;
     }
@@ -1852,10 +1849,6 @@ async function editLotteryResultInModal(resultId, currentLotteryNumber, currentG
         const updateData = { 
             lottery_number: parseInt(newLotteryNumber)
         };
-        
-        if (newGroupNumber && newGroupNumber.trim() !== '') {
-            updateData.group_number = newGroupNumber.trim();
-        }
         
         if (newRoomType && newRoomType.trim() !== '') {
             updateData.room_type = newRoomType.trim();

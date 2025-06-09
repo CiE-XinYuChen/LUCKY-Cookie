@@ -74,12 +74,15 @@
 <script>
 let userData = null;
 
+let hasLotteryResult = false;
+
 document.addEventListener('DOMContentLoaded', function() {
     if (!requireAuth()) return;
     
     loadUserInfo();
-    loadLotteryResults();
-    loadRoomSelection();
+    loadLotteryResults().then(() => {
+        loadRoomSelection();
+    });
 });
 
 async function loadUserInfo() {
@@ -111,18 +114,30 @@ async function loadLotteryResults() {
         const container = document.getElementById('lotteryResults');
         
         if (response.results.length === 0) {
-            container.innerHTML = '<p>暂无抽签结果</p>';
+            container.innerHTML = `
+                <div class="alert alert-warning">
+                    <p>暂无抽签结果。请等待管理员进行抽签分配。</p>
+                </div>
+            `;
+            hasLotteryResult = false;
             return;
         }
+        
+        hasLotteryResult = true;
         
         const resultsHtml = response.results.map(result => `
             <div class="card" style="margin-bottom: 16px;">
                 <div class="card-content">
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
                         <div><strong>抽签号码：</strong> ${result.lottery_number}</div>
-                        <div><strong>分组号：</strong> ${result.group_number || '未分组'}</div>
+                        <div><strong>分配房间类型：</strong> ${result.room_type ? `${result.room_type}人间` : '未分配'}</div>
                         <div><strong>抽签时间：</strong> ${formatDate(result.created_at)}</div>
                     </div>
+                    ${result.room_type ? `
+                        <div class="alert alert-info" style="margin-top: 16px;">
+                            <strong>注意：</strong>您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `).join('');
@@ -139,10 +154,18 @@ async function loadRoomSelection() {
         const container = document.getElementById('roomSelection');
         
         if (!response.selection) {
-            container.innerHTML = `
-                <p>您还没有选择宿舍</p>
-                <a href="/room-selection" class="btn btn-primary">立即选择宿舍</a>
-            `;
+            if (!hasLotteryResult) {
+                container.innerHTML = `
+                    <div class="alert alert-warning">
+                        <p>您还没有抽签结果，无法选择宿舍。请等待管理员进行抽签分配。</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `
+                    <p>您还没有选择宿舍</p>
+                    <a href="/room-selection" class="btn btn-primary" id="selectRoomBtn">立即选择宿舍</a>
+                `;
+            }
             return;
         }
         

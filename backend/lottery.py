@@ -25,6 +25,7 @@ def lottery_result_to_dict(result):
         'lottery_id': result['lottery_id'],
         'lottery_number': result['lottery_number'],
         'group_number': result['group_number'],
+        'room_type': result['room_type'] if 'room_type' in result.keys() else None,
         'created_at': result['created_at']
     }
 
@@ -217,19 +218,23 @@ def get_lottery_results():
                 ORDER BY lr.lottery_number
             ''')
     else:
+        # 学生只能查看已发布的抽签结果
         if lottery_id:
             c.execute('''
                 SELECT lr.*, u.name as user_name
                 FROM lottery_results lr
                 JOIN users u ON lr.user_id = u.id
-                WHERE lr.user_id = ? AND lr.lottery_id = ?
+                JOIN lottery_settings ls ON lr.lottery_id = ls.id
+                WHERE lr.user_id = ? AND lr.lottery_id = ? AND ls.is_published = 1
             ''', (current_user_id, lottery_id))
         else:
             c.execute('''
                 SELECT lr.*, u.name as user_name
                 FROM lottery_results lr
                 JOIN users u ON lr.user_id = u.id
-                WHERE lr.user_id = ?
+                JOIN lottery_settings ls ON lr.lottery_id = ls.id
+                WHERE lr.user_id = ? AND ls.is_published = 1
+                ORDER BY lr.created_at DESC
             ''', (current_user_id,))
     
     results = c.fetchall()

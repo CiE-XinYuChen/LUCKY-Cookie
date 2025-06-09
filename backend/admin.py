@@ -863,54 +863,50 @@ def quick_lottery_draw():
             c = conn.cursor()
             
             allocated_users = 0
-            group_4_count = 0
-            group_6_count = 0
+            room_4_users = 0
+            room_8_users = 0
             
-            # 先分配四人寝
-            if room_4_count > 0:
-                needed_4_groups = min(room_4_count, (len(user_ids) + 3) // 4) if room_4_count != 999999 else (len(user_ids) + 3) // 4
-                for group in range(needed_4_groups):
-                    start_idx = allocated_users
-                    end_idx = min(allocated_users + 4, len(user_ids))
-                    if start_idx >= len(user_ids):
-                        break
-                    
-                    group_4_count += 1
-                    
-                    for i in range(start_idx, end_idx):
-                        c.execute(
-                            'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, group_number, room_type) VALUES (?, ?, ?, ?, ?)',
-                            (user_ids[i], lottery_id, i + 1, f'4-{group_4_count}', '4')
-                        )
-                    
-                    allocated_users = end_idx
+            # 计算实际需要分配的人数
+            total_room_4_users = room_4_count * 4 if room_4_count != 999999 else 0
+            total_room_8_users = room_6_count * 8 if room_6_count != 999999 else 0
             
-            # 再分配六人寝（如果还有用户）
-            if room_6_count > 0 and allocated_users < len(user_ids):
-                needed_6_groups = min(room_6_count, (len(user_ids) - allocated_users + 5) // 6) if room_6_count != 999999 else (len(user_ids) - allocated_users + 5) // 6
-                for group in range(needed_6_groups):
-                    start_idx = allocated_users
-                    end_idx = min(allocated_users + 6, len(user_ids))
-                    if start_idx >= len(user_ids):
-                        break
-                    
-                    group_6_count += 1
-                    
-                    for i in range(start_idx, end_idx):
-                        c.execute(
-                            'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, group_number, room_type) VALUES (?, ?, ?, ?, ?)',
-                            (user_ids[i], lottery_id, i + 1, f'6-{group_6_count}', '6')
-                        )
-                    
-                    allocated_users = end_idx
+            # 如果是单一房间类型模式
+            if room_4_count == 999999:
+                total_room_4_users = len(user_ids)
+                total_room_8_users = 0
+            elif room_6_count == 999999:
+                total_room_4_users = 0
+                total_room_8_users = len(user_ids)
+            
+            # 分配四人间
+            if total_room_4_users > 0:
+                actual_4_users = min(total_room_4_users, len(user_ids) - allocated_users)
+                for i in range(actual_4_users):
+                    c.execute(
+                        'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, room_type) VALUES (?, ?, ?, ?)',
+                        (user_ids[allocated_users + i], lottery_id, allocated_users + i + 1, '4')
+                    )
+                    room_4_users += 1
+                allocated_users += actual_4_users
+            
+            # 分配八人间
+            if total_room_8_users > 0 and allocated_users < len(user_ids):
+                actual_8_users = min(total_room_8_users, len(user_ids) - allocated_users)
+                for i in range(actual_8_users):
+                    c.execute(
+                        'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, room_type) VALUES (?, ?, ?, ?)',
+                        (user_ids[allocated_users + i], lottery_id, allocated_users + i + 1, '8')
+                    )
+                    room_8_users += 1
+                allocated_users += actual_8_users
         
         return jsonify({
             'message': '抽签生成成功',
             'lottery_id': lottery_id,
             'total_participants': len(user_ids),
             'allocated_participants': allocated_users,
-            'room_4_groups': group_4_count,
-            'room_6_groups': group_6_count
+            'room_4_users': room_4_users,
+            'room_8_users': room_8_users
         }), 200
         
     except Exception as e:
