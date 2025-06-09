@@ -360,18 +360,6 @@ def generate_lottery_results():
     except Exception as e:
         return jsonify({'error': f'生成失败: {str(e)}'}), 500
 
-@admin_bp.route('/lottery/publish', methods=['POST'])
-@admin_required
-def publish_lottery_results():
-    lottery = db.get_active_lottery()
-    if not lottery:
-        return jsonify({'error': '没有活动的抽签'}), 404
-    
-    try:
-        db.publish_lottery(lottery['id'])
-        return jsonify({'message': '抽签结果已发布'}), 200
-    except Exception as e:
-        return jsonify({'error': '发布失败'}), 500
 
 @admin_bp.route('/buildings', methods=['GET'])
 @admin_required
