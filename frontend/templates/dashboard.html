@@ -179,6 +179,9 @@ async function loadLotteryResults() {
         
         hasLotteryResult = true;
         
+        // 检查抽签结果是否已发布
+        const hasPublishedResult = response.results.some(result => result.is_published);
+        
         const resultsHtml = response.results.map(result => `
             <div class="stat-card" style="margin-bottom: 1rem; padding: 1.5rem;">
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1rem;">
@@ -196,14 +199,24 @@ async function loadLotteryResults() {
                     </div>
                 </div>
                 ${result.room_type ? `
-                    <div class="alert alert-info" style="margin-bottom: 0;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                        您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
-                    </div>
+                    ${result.is_published ? `
+                        <div class="alert alert-info" style="margin-bottom: 0;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="16" x2="12" y2="12"></line>
+                                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                            </svg>
+                            您已被分配到${result.room_type}人间，请到"宿舍选择"页面选择具体床位。
+                        </div>
+                    ` : `
+                        <div class="alert alert-warning" style="margin-bottom: 0;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v20"></path>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                            您已被分配到${result.room_type}人间（结果尚未发布）
+                        </div>
+                    `}
                 ` : ''}
             </div>
         `).join('');
@@ -255,10 +268,22 @@ async function loadRoomSelection() {
                     </div>
                 `;
             } else {
-                container.innerHTML = `
-                    <p>您还没有选择宿舍</p>
-                    <a href="/room-selection" class="btn btn-primary" id="selectRoomBtn">立即选择宿舍</a>
-                `;
+                // 检查抽签结果是否已发布
+                const lotteryResponse = await api.getLotteryResults();
+                const hasPublishedResult = lotteryResponse.results && lotteryResponse.results.some(result => result.is_published);
+                
+                if (!hasPublishedResult) {
+                    container.innerHTML = `
+                        <div class="alert alert-warning">
+                            <p>您的抽签结果尚未发布，请等待管理员发布后再选择宿舍。</p>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <p>您还没有选择宿舍</p>
+                        <a href="/room-selection" class="btn btn-primary" id="selectRoomBtn">立即选择宿舍</a>
+                    `;
+                }
             }
             return;
         }

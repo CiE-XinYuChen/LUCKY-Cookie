@@ -308,7 +308,31 @@ def update_lottery_result(result_id):
 @lottery_bp.route('/rooms/available', methods=['GET'])
 @jwt_required()
 def get_available_rooms():
-    room_type = request.args.get('room_type')
+    current_user_id = get_jwt_identity()
+    user = db.get_user_by_id(current_user_id)
+    
+    if user and user['is_admin']:
+        # Admin can see all rooms
+        room_type = request.args.get('room_type')
+    else:
+        # Regular users must have published lottery result
+        conn = db.get_db()
+        c = conn.cursor()
+        c.execute('''
+            SELECT lr.*, ls.is_published, ls.room_type
+            FROM lottery_results lr
+            JOIN lottery_settings ls ON lr.lottery_id = ls.id
+            WHERE lr.user_id = ? AND ls.is_published = 1
+        ''', (current_user_id,))
+        lottery_result = c.fetchone()
+        conn.close()
+        
+        if not lottery_result:
+            return jsonify({'error': '您还没有已发布的抽签结果，无法查看可选房间'}), 403
+        
+        # Force room_type to match lottery result
+        room_type = lottery_result['room_type']
+    
     building_id = request.args.get('building_id', type=int)
     
     conn = db.get_db()

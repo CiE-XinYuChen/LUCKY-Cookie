@@ -47,6 +47,21 @@ def select_room():
     if user['is_admin']:
         return jsonify({'error': '管理员不能选择宿舍'}), 400
     
+    # Check if user has published lottery result
+    conn = db.get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT lr.*, ls.is_published, ls.room_type
+        FROM lottery_results lr
+        JOIN lottery_settings ls ON lr.lottery_id = ls.id
+        WHERE lr.user_id = ? AND ls.is_published = 1
+    ''', (current_user_id,))
+    lottery_result = c.fetchone()
+    conn.close()
+    
+    if not lottery_result:
+        return jsonify({'error': '您还没有已发布的抽签结果，无法选择宿舍'}), 403
+    
     data = request.get_json()
     if not data or not data.get('bed_id'):
         return jsonify({'error': '床位ID不能为空'}), 400
@@ -71,7 +86,7 @@ def select_room():
         conn = db.get_db()
         c = conn.cursor()
         c.execute('''
-            SELECT b.*, r.id as room_id, r.is_available as room_available
+            SELECT b.*, r.id as room_id, r.is_available as room_available, r.room_type
             FROM beds b
             JOIN rooms r ON b.room_id = r.id
             WHERE b.id = ?
@@ -84,6 +99,10 @@ def select_room():
         
         if not bed_info['room_available']:
             return jsonify({'error': '房间不可用'}), 400
+        
+        # Check if room type matches lottery result
+        if bed_info['room_type'] != lottery_result['room_type']:
+            return jsonify({'error': f'您只能选择{lottery_result["room_type"]}人间的房间'}), 403
         
         if bed_info['is_occupied']:
             return jsonify({'error': '床位已被占用'}), 409
@@ -224,6 +243,21 @@ def change_selection():
     if not user:
         return jsonify({'error': '用户不存在'}), 404
     
+    # Check if user has published lottery result
+    conn = db.get_db()
+    c = conn.cursor()
+    c.execute('''
+        SELECT lr.*, ls.is_published, ls.room_type
+        FROM lottery_results lr
+        JOIN lottery_settings ls ON lr.lottery_id = ls.id
+        WHERE lr.user_id = ? AND ls.is_published = 1
+    ''', (current_user_id,))
+    lottery_result = c.fetchone()
+    conn.close()
+    
+    if not lottery_result:
+        return jsonify({'error': '您还没有已发布的抽签结果，无法选择宿舍'}), 403
+    
     data = request.get_json()
     if not data or not data.get('new_bed_id'):
         return jsonify({'error': '新床位ID不能为空'}), 400
@@ -254,7 +288,7 @@ def change_selection():
         conn = db.get_db()
         c = conn.cursor()
         c.execute('''
-            SELECT b.*, r.id as room_id, r.is_available as room_available
+            SELECT b.*, r.id as room_id, r.is_available as room_available, r.room_type
             FROM beds b
             JOIN rooms r ON b.room_id = r.id
             WHERE b.id = ?
@@ -264,6 +298,11 @@ def change_selection():
         if not new_bed_info:
             conn.close()
             return jsonify({'error': '新床位不存在'}), 404
+        
+        # Check if room type matches lottery result
+        if new_bed_info['room_type'] != lottery_result['room_type']:
+            conn.close()
+            return jsonify({'error': f'您只能选择{lottery_result["room_type"]}人间的房间'}), 403
         
         if new_bed_info['is_occupied']:
             conn.close()

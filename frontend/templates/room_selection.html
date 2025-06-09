@@ -118,48 +118,71 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     loadBuildings();
-    loadMyLotteryResult().then(() => {
-        loadMySelection();
-        loadAvailableRooms();
+    loadMyLotteryResult().then((hasResult) => {
+        if (hasResult) {
+            loadMySelection();
+            loadAvailableRooms();
+        }
     });
 });
 
 async function loadMyLotteryResult() {
     try {
         const response = await api.getLotteryResults();
-        if (response.results && response.results.length > 0) {
-            myLotteryResult = response.results[0]; // 取最新的抽签结果
-            
-            // 在页面顶部显示抽签结果信息
-            const header = document.querySelector('h1');
-            if (myLotteryResult.room_type) {
-                header.insertAdjacentHTML('afterend', `
-                    <div class="alert alert-info" style="margin-bottom: 24px;">
-                        <strong>您的抽签结果：</strong>抽签号 ${myLotteryResult.lottery_number}，分配房间类型：${myLotteryResult.room_type}人间
-                    </div>
-                `);
-                
-                // 设置房间类型筛选器，只显示分配的房间类型
-                const roomTypeFilter = document.getElementById('roomTypeFilter');
-                roomTypeFilter.innerHTML = `
-                    <option value="${myLotteryResult.room_type}">${myLotteryResult.room_type}人间</option>
-                `;
-                roomTypeFilter.value = myLotteryResult.room_type;
-                roomTypeFilter.disabled = true; // 禁用选择，因为只能选择分配的类型
-            }
-        } else {
-            // 没有抽签结果，显示提示并阻止选择
-            const container = document.querySelector('.container');
-            container.innerHTML = `
-                <h1>宿舍选择</h1>
-                <div class="alert alert-warning">
-                    <h3>无法选择宿舍</h3>
-                    <p>您还没有抽签结果，无法选择宿舍。请联系管理员或等待抽签分配。</p>
+        if (!response.results || response.results.length === 0) {
+            // 没有抽签结果
+            document.querySelector('.container').innerHTML = `
+                <div class="card" style="text-align: center; padding: 3rem;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--warning-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    <h2>暂时无法选择宿舍</h2>
+                    <p style="color: var(--text-secondary); margin: 1rem 0;">您还没有抽签结果，请等待管理员分配</p>
                     <a href="/dashboard" class="btn btn-primary">返回个人中心</a>
                 </div>
             `;
-            return;
+            return false;
         }
+        
+        myLotteryResult = response.results[0]; // 取最新的抽签结果
+        
+        // 检查抽签结果是否已发布
+        if (!myLotteryResult.is_published) {
+            document.querySelector('.container').innerHTML = `
+                <div class="card" style="text-align: center; padding: 3rem;">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--warning-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
+                        <path d="M12 2v20"></path>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    <h2>抽签结果尚未发布</h2>
+                    <p style="color: var(--text-secondary); margin: 1rem 0;">您的抽签结果还未发布，请等待管理员发布后再选择宿舍</p>
+                    <a href="/dashboard" class="btn btn-primary">返回个人中心</a>
+                </div>
+            `;
+            return false;
+        }
+        
+        // 在页面顶部显示抽签结果信息
+        const header = document.querySelector('h1');
+        if (myLotteryResult.room_type) {
+            header.insertAdjacentHTML('afterend', `
+                <div class="alert alert-info" style="margin-bottom: 24px;">
+                    <strong>您的抽签结果：</strong>抽签号 ${myLotteryResult.lottery_number}，分配房间类型：${myLotteryResult.room_type}人间
+                </div>
+            `);
+            
+            // 设置房间类型筛选器，只显示分配的房间类型
+            const roomTypeFilter = document.getElementById('roomTypeFilter');
+            roomTypeFilter.innerHTML = `
+                <option value="${myLotteryResult.room_type}">${myLotteryResult.room_type}人间</option>
+            `;
+            roomTypeFilter.value = myLotteryResult.room_type;
+            roomTypeFilter.disabled = true; // 禁用选择，因为只能选择分配的类型
+        }
+        
+        return true; // 成功加载抽签结果
     } catch (error) {
         console.error('加载抽签结果失败:', error);
         const container = document.querySelector('.container');
