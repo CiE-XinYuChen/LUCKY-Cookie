@@ -405,6 +405,38 @@
     </div>
 </div>
 
+<!-- 编辑抽签房间类型分配模态框 -->
+<div id="editLotteryRoomTypeModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">编辑抽签房间类型分配</h3>
+        </div>
+        <div class="modal-content">
+            <div style="margin-bottom: 16px;">
+                <strong>学生：</strong><span id="editLotteryUserName"></span>
+            </div>
+            <form id="editLotteryRoomTypeForm">
+                <div class="form-group">
+                    <label class="form-label">房间类型</label>
+                    <select id="editLotteryRoomType" class="form-input" required>
+                        <option value="">请选择房间类型</option>
+                        <option value="4">4人间</option>
+                        <option value="8">8人间</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">备注</label>
+                    <textarea id="editLotteryRoomTypeNotes" class="form-input" rows="3" placeholder="可选备注"></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideEditLotteryRoomTypeModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="confirmEditLotteryRoomType()">保存</button>
+        </div>
+    </div>
+</div>
+
 <!-- 抽签结果确认模态框 -->
 <div id="lotteryConfirmModal" class="modal-overlay" style="display: none;">
     <div class="modal" style="max-width: 900px;">
@@ -969,14 +1001,15 @@ async function loadRoomTypeAllocations() {
                         <tr>
                             <td>${allocation.user_name}</td>
                             <td>${allocation.user_username}</td>
-                            <td>${allocation.room_type}人间</td>
+                            <td>${allocation.room_type ? allocation.room_type + '人间' : '未分配'}</td>
                             <td>${allocation.allocator_name || '系统'}</td>
                             <td>${formatDate(allocation.allocated_at)}</td>
                             <td>
                                 ${allocation.allocation_type === 'manual' ? `
-                                    <button class="btn btn-outline btn-sm" style="margin-right: 8px;" onclick="editRoomTypeAllocation(${allocation.id}, '${allocation.room_type}', '${allocation.notes ? allocation.notes : ''}')">编辑</button>
+                                    <button class="btn btn-outline btn-sm" style="margin-right: 8px;" onclick="editRoomTypeAllocation(${allocation.id}, '${allocation.room_type || ''}', '${allocation.notes ? allocation.notes : ''}')">编辑</button>
                                     <button class="btn btn-error btn-sm" onclick="deleteRoomTypeAllocation(${allocation.id})">删除</button>
                                 ` : `
+                                    <button class="btn btn-outline btn-sm" style="margin-right: 8px;" onclick="editLotteryRoomTypeAllocation(${allocation.id}, '${allocation.room_type || ''}', '${allocation.user_name}')">编辑</button>
                                     <span class="text-muted">抽签分配</span>
                                 `}
                             </td>
@@ -2147,6 +2180,55 @@ async function editLotteryResultInModal(resultId, currentLotteryNumber, currentR
         await api.updateLotteryResult(resultId, updateData);
         showAlert('抽签结果更新成功', 'success');
         loadLotteryResults();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+// 编辑抽签房间类型分配相关函数
+let currentEditLotteryResultId = null;
+
+function editLotteryRoomTypeAllocation(resultId, currentRoomType, userName) {
+    currentEditLotteryResultId = resultId;
+    
+    document.getElementById('editLotteryUserName').textContent = userName;
+    document.getElementById('editLotteryRoomType').value = currentRoomType || '';
+    document.getElementById('editLotteryRoomTypeNotes').value = '';
+    
+    document.getElementById('editLotteryRoomTypeModal').style.display = 'flex';
+}
+
+function hideEditLotteryRoomTypeModal() {
+    document.getElementById('editLotteryRoomTypeModal').style.display = 'none';
+    document.getElementById('editLotteryRoomTypeForm').reset();
+    currentEditLotteryResultId = null;
+}
+
+async function confirmEditLotteryRoomType() {
+    if (!currentEditLotteryResultId) {
+        showAlert('无效的编辑请求', 'error');
+        return;
+    }
+    
+    const roomType = document.getElementById('editLotteryRoomType').value;
+    if (!roomType) {
+        showAlert('请选择房间类型', 'error');
+        return;
+    }
+    
+    if (!['4', '8'].includes(roomType)) {
+        showAlert('房间类型必须是4或8', 'error');
+        return;
+    }
+    
+    try {
+        const response = await api.updateLotteryResult(currentEditLotteryResultId, {
+            room_type: roomType
+        });
+        
+        showAlert('房间类型分配更新成功', 'success');
+        hideEditLotteryRoomTypeModal();
+        loadRoomTypeAllocations(); // 重新加载分配列表
     } catch (error) {
         showAlert(error.message, 'error');
     }

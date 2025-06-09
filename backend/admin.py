@@ -723,7 +723,7 @@ def get_room_type_allocations():
             u.id as user_id,
             u.name as user_name, 
             u.username,
-            COALESCE(rta.room_type, ls.room_type) as room_type,
+            COALESCE(rta.room_type, lr.room_type, ls.room_type) as room_type,
             COALESCE(rta.allocated_at, lr.created_at) as allocated_at,
             COALESCE(a.name, '抽签系统') as allocator_name,
             COALESCE(rta.notes, '通过抽签获得') as notes,
@@ -737,6 +737,7 @@ def get_room_type_allocations():
         LEFT JOIN users a ON rta.allocated_by = a.id
         WHERE u.is_admin = 0 
         AND (rta.user_id IS NOT NULL OR lr.user_id IS NOT NULL)
+        AND COALESCE(rta.room_type, lr.room_type, ls.room_type) IS NOT NULL
     '''
     
     # Add search filter if provided
