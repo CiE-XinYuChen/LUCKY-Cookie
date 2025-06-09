@@ -82,7 +82,7 @@ def lottery_result_to_dict(result):
         'group_number': result['group_number'],
         'room_type': result['room_type'] if 'room_type' in result.keys() else None,
         'lottery_name': result['lottery_name'] if 'lottery_name' in result.keys() else None,
-        'is_published': result['is_published'] if 'is_published' in result.keys() else None,
+        'is_published': bool(result['is_published']) if 'is_published' in result.keys() else None,
         'created_at': result['created_at']
     }
 
@@ -303,14 +303,19 @@ def import_users():
 @admin_bp.route('/lottery/settings', methods=['GET'])
 @admin_required
 def get_lottery_settings():
-    lottery = db.get_active_lottery()
+    # Get all lottery settings, not just active one
+    conn = db.get_db()
+    c = conn.cursor()
+    c.execute('SELECT * FROM lottery_settings ORDER BY created_at DESC')
+    lotteries = c.fetchall()
+    conn.close()
     
-    if lottery:
+    if lotteries:
         return jsonify({
-            'lottery': lottery_setting_to_dict(lottery)
+            'lotteries': [lottery_setting_to_dict(lottery) for lottery in lotteries]
         }), 200
     
-    return jsonify({'lottery': None}), 200
+    return jsonify({'lotteries': []}, 200
 
 @admin_bp.route('/lottery/settings', methods=['POST'])
 @admin_required

@@ -2229,10 +2229,10 @@ async function loadLotteryResults() {
             groupedResults[result.lottery_id].push(result);
             
             // 从结果中提取抽签设置信息
-            if (result.lottery_name && !lotterySettings[result.lottery_id]) {
+            if (!lotterySettings[result.lottery_id]) {
                 lotterySettings[result.lottery_id] = {
-                    lottery_name: result.lottery_name,
-                    is_published: result.is_published
+                    lottery_name: result.lottery_name || '未知抽签',
+                    is_published: result.is_published !== null && result.is_published !== undefined ? result.is_published : false
                 };
             }
         });
@@ -2248,10 +2248,10 @@ async function loadLotteryResults() {
                         <div>
                             <h4>${setting ? setting.lottery_name : '未知抽签'}</h4>
                             <small>参与人数: ${results.length} | 
-                                   状态: <span style="color: ${setting && setting.is_published ? 'green' : 'orange'}">${setting && setting.is_published ? '已发布' : '草稿（待发布）'}</span></small>
+                                   状态: <span style="color: ${setting.is_published ? 'green' : 'orange'}">${setting.is_published ? '已发布' : '草稿（待发布）'}</span></small>
                         </div>
                         <div>
-                            ${setting && !setting.is_published ? `
+                            ${!setting.is_published ? `
                                 <button class="btn btn-success" style="margin-right: 8px;" onclick="publishLottery(${lotteryId})">发布</button>
                             ` : ''}
                             <button class="btn btn-error" onclick="deleteLottery(${lotteryId})">删除</button>
