@@ -1121,3 +1121,45 @@ h4 {
 .animate-slideIn {
     animation: slideIn 0.3s ease;
 }
+
+/* Footer Styles */
+.site-footer {
+    background-color: var(--background-secondary);
+    border-top: 1px solid var(--border-color);
+    padding: 1.5rem 0;
+    margin-top: auto;
+}
+
+.footer-content {
+    text-align: center;
+}
+
+.footer-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.footer-legal {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.footer-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.footer-link:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+/* Body layout adjustment for footer */
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}

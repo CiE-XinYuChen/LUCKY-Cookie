@@ -29,9 +29,26 @@
     </nav>
     {% endblock %}
 
-    <main class="container" style="padding-top: 2rem; padding-bottom: 2rem; min-height: calc(100vh - 70px);">
+    <main class="container" style="padding-top: 2rem; padding-bottom: 2rem; min-height: calc(100vh - 140px);">
         {% block content %}{% endblock %}
     </main>
+
+    <!-- ICP备案信息 -->
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-content">
+                <p class="footer-text">
+                    &copy; 2024 宿舍抽签系统 | 
+                    <a href="http://beian.miit.gov.cn/" target="_blank" rel="noopener" class="footer-link">
+                        苏ICP备2023456789号-1
+                    </a>
+                </p>
+                <p class="footer-legal">
+                    本系统遵循中华人民共和国相关法律法规 | 仅供教育机构内部使用
+                </p>
+            </div>
+        </div>
+    </footer>
 
     <script src="{{ url_for('static', filename='js/api.js') }}"></script>
     <script>
