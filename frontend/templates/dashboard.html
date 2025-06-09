@@ -200,6 +200,9 @@ class DashboardManager {
             case 'cancelPasswordBtn':
                 this.hidePasswordModal();
                 break;
+            case 'confirm-selection':
+                this.handleConfirmSelection(event);
+                break;
         }
     }
     
@@ -709,6 +712,30 @@ class DashboardManager {
         }
         
         return isValid;
+    }
+    
+    /**
+     * 处理确认选择
+     */
+    async handleConfirmSelection(event) {
+        event.preventDefault();
+        
+        const button = event.target;
+        this.setButtonLoading(button, true);
+        
+        try {
+            await api.confirmSelection();
+            showAlert('选择确认成功', 'success');
+            
+            // 重新加载宿舍选择信息
+            await this.loadRoomSelection();
+            
+        } catch (error) {
+            console.error('确认选择失败:', error);
+            showAlert(error.message || '确认选择失败，请重试', 'error');
+        } finally {
+            this.setButtonLoading(button, false);
+        }
     }
     
     /**
