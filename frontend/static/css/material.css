@@ -373,3 +373,50 @@ body {
         margin-bottom: 8px;
     }
 }
+
+/* 统计页面样式 */
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-item:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.stat-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.stat-card {
+    background: var(--surface-color);
+    border-radius: 8px;
+    box-shadow: var(--shadow-1);
+    transition: box-shadow 0.3s ease;
+}
+
+.stat-card:hover {
+    box-shadow: var(--shadow-2);
+}
+
+/* 统计网格布局优化 */
+@media (max-width: 768px) {
+    #statisticsContent .card {
+        min-width: 100%;
+    }
+    
+    #roomCountsChart .stat-card {
+        min-width: 100px;
+        flex: 1;
+    }
+}

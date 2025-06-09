@@ -955,6 +955,211 @@ def get_statistics():
     
     return jsonify({'statistics': stats}), 200
 
+@admin_bp.route('/detailed-statistics', methods=['GET'])
+@admin_required
+def get_detailed_statistics():
+    """获取详细的分配统计信息"""
+    conn = db.get_db()
+    c = conn.cursor()
+    
+    stats = {}
+    
+    # 总用户数（非管理员）
+    c.execute('SELECT COUNT(*) as total FROM users WHERE is_admin = 0')
+    stats['total_users'] = c.fetchone()['total']
+    
+    # 房间类型分配统计
+    c.execute('''
+        SELECT COUNT(*) as total FROM users u
+        WHERE u.is_admin = 0 
+        AND (u.id IN (SELECT user_id FROM room_type_allocations)
+             OR u.id IN (SELECT user_id FROM lottery_results lr 
+                         JOIN lottery_settings ls ON lr.lottery_id = ls.id 
+                         WHERE ls.is_published = 1))
+    ''')
+    stats['room_type_allocated_users'] = c.fetchone()['total']
+    
+    # 未分配房间类型的用户数
+    stats['room_type_unallocated_users'] = stats['total_users'] - stats['room_type_allocated_users']
+    
+    # 具体房间分配统计
+    c.execute('SELECT COUNT(*) as total FROM room_selections')
+    stats['room_allocated_users'] = c.fetchone()['total']
+    
+    # 未分配具体房间的用户数
+    stats['room_unallocated_users'] = stats['total_users'] - stats['room_allocated_users']
+    
+    # 已确认分配的用户数
+    c.execute('SELECT COUNT(*) as total FROM room_selections WHERE is_confirmed = 1')
+    stats['confirmed_users'] = c.fetchone()['total']
+    
+    # 未确认分配的用户数
+    stats['unconfirmed_users'] = stats['room_allocated_users'] - stats['confirmed_users']
+    
+    # 分配到4人间的人数
+    c.execute('''
+        SELECT COUNT(*) as total FROM users u
+        WHERE u.is_admin = 0 
+        AND (
+            (u.id IN (SELECT user_id FROM room_type_allocations WHERE room_type = '4'))
+            OR 
+            (u.id IN (SELECT user_id FROM lottery_results lr 
+                      JOIN lottery_settings ls ON lr.lottery_id = ls.id 
+                      WHERE ls.is_published = 1 AND (lr.room_type = '4' OR ls.room_type = '4')))
+        )
+    ''')
+    stats['room_4_users'] = c.fetchone()['total']
+    
+    # 分配到8人间的人数
+    c.execute('''
+        SELECT COUNT(*) as total FROM users u
+        WHERE u.is_admin = 0 
+        AND (
+            (u.id IN (SELECT user_id FROM room_type_allocations WHERE room_type = '8'))
+            OR 
+            (u.id IN (SELECT user_id FROM lottery_results lr 
+                      JOIN lottery_settings ls ON lr.lottery_id = ls.id 
+                      WHERE ls.is_published = 1 AND (lr.room_type = '8' OR ls.room_type = '8')))
+        )
+    ''')
+    stats['room_8_users'] = c.fetchone()['total']
+    
+    # 房间占用统计
+    c.execute('SELECT COUNT(*) as total FROM beds WHERE is_occupied = 1')
+    stats['occupied_beds'] = c.fetchone()['total']
+    
+    c.execute('SELECT COUNT(*) as total FROM beds')
+    stats['total_beds'] = c.fetchone()['total']
+    
+    stats['available_beds'] = stats['total_beds'] - stats['occupied_beds']
+    
+    # 按房间类型统计房间数
+    c.execute('SELECT room_type, COUNT(*) as count FROM rooms GROUP BY room_type')
+    room_type_counts = c.fetchall()
+    stats['room_counts'] = {str(row['room_type']): row['count'] for row in room_type_counts}
+    
+    conn.close()
+    
+    return jsonify({'statistics': stats}), 200
+
+@admin_bp.route('/export-allocations', methods=['GET'])
+@admin_required
+def export_allocations():
+    """导出所有用户分配信息为Excel格式"""
+    try:
+        import pandas as pd
+        from io import BytesIO
+        
+        conn = db.get_db()
+        c = conn.cursor()
+        
+        # 获取所有用户的完整分配信息
+        c.execute('''
+            SELECT 
+                u.id,
+                u.username,
+                u.name,
+                COALESCE(rta.room_type, lr.room_type, ls.room_type) as allocated_room_type,
+                CASE 
+                    WHEN rta.id IS NOT NULL THEN '手动分配'
+                    WHEN lr.id IS NOT NULL THEN '抽签分配'
+                    ELSE '未分配'
+                END as allocation_method,
+                lr.lottery_number,
+                rs.id as has_room_selection,
+                rs.is_confirmed,
+                r.room_number,
+                b_name.name as building_name,
+                bd.bed_number,
+                rta.allocated_at as room_type_allocated_at,
+                lr.created_at as lottery_allocated_at,
+                rs.selected_at as room_selected_at,
+                rta.notes
+            FROM users u
+            LEFT JOIN room_type_allocations rta ON u.id = rta.user_id
+            LEFT JOIN lottery_results lr ON u.id = lr.user_id
+            LEFT JOIN lottery_settings ls ON lr.lottery_id = ls.id AND ls.is_published = 1
+            LEFT JOIN room_selections rs ON u.id = rs.user_id
+            LEFT JOIN rooms r ON rs.room_id = r.id
+            LEFT JOIN buildings b_name ON r.building_id = b_name.id
+            LEFT JOIN beds bd ON rs.bed_id = bd.id
+            WHERE u.is_admin = 0
+            ORDER BY u.id
+        ''')
+        
+        allocations = c.fetchall()
+        conn.close()
+        
+        # 转换为DataFrame
+        data = []
+        for allocation in allocations:
+            data.append({
+                '用户ID': allocation['id'],
+                '用户名': allocation['username'],
+                '姓名': allocation['name'],
+                '分配房间类型': f"{allocation['allocated_room_type']}人间" if allocation['allocated_room_type'] else '未分配',
+                '分配方式': allocation['allocation_method'],
+                '抽签号码': allocation['lottery_number'] if allocation['lottery_number'] else '',
+                '是否选择具体房间': '是' if allocation['has_room_selection'] else '否',
+                '是否确认分配': '是' if allocation['is_confirmed'] else '否',
+                '楼栋': allocation['building_name'] if allocation['building_name'] else '',
+                '房间号': allocation['room_number'] if allocation['room_number'] else '',
+                '床位号': f"{allocation['bed_number']}号床" if allocation['bed_number'] else '',
+                '房间类型分配时间': allocation['room_type_allocated_at'] if allocation['room_type_allocated_at'] else allocation['lottery_allocated_at'],
+                '房间选择时间': allocation['room_selected_at'],
+                '备注': allocation['notes'] if allocation['notes'] else ''
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # 创建Excel文件
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='用户分配统计', index=False)
+            
+            # 添加统计汇总sheet
+            stats_data = []
+            
+            # 重新计算统计数据
+            total_users = len(df)
+            room_type_allocated = len(df[df['分配房间类型'] != '未分配'])
+            room_allocated = len(df[df['是否选择具体房间'] == '是'])
+            confirmed = len(df[df['是否确认分配'] == '是'])
+            room_4_users = len(df[df['分配房间类型'] == '4人间'])
+            room_8_users = len(df[df['分配房间类型'] == '8人间'])
+            
+            stats_data.append(['总用户数', total_users])
+            stats_data.append(['已分配房间类型用户数', room_type_allocated])
+            stats_data.append(['未分配房间类型用户数', total_users - room_type_allocated])
+            stats_data.append(['已选择具体房间用户数', room_allocated])
+            stats_data.append(['未选择具体房间用户数', total_users - room_allocated])
+            stats_data.append(['已确认分配用户数', confirmed])
+            stats_data.append(['未确认分配用户数', room_allocated - confirmed])
+            stats_data.append(['分配到4人间用户数', room_4_users])
+            stats_data.append(['分配到8人间用户数', room_8_users])
+            
+            stats_df = pd.DataFrame(stats_data, columns=['统计项目', '数量'])
+            stats_df.to_excel(writer, sheet_name='统计汇总', index=False)
+        
+        output.seek(0)
+        
+        from flask import send_file
+        import datetime
+        
+        filename = f"用户分配统计_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except ImportError:
+        return jsonify({'error': '缺少pandas或openpyxl库，无法导出Excel文件'}), 500
+    except Exception as e:
+        return jsonify({'error': f'导出失败: {str(e)}'}), 500
+
 @admin_bp.route('/lottery/quick-draw', methods=['POST'])
 @admin_required
 def quick_lottery_draw():

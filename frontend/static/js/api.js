@@ -336,6 +336,59 @@ class API {
     async getSelectionStatistics() {
         return this.get('/api/room-selection/statistics');
     }
+
+    // 详细统计 API
+    async getDetailedStatistics() {
+        return this.get('/api/admin/detailed-statistics');
+    }
+
+    async exportAllocations() {
+        const config = {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${this.token}`
+            }
+        };
+
+        try {
+            const response = await fetch(this.baseURL + '/api/admin/export-allocations', config);
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || '导出失败');
+            }
+
+            // 获取文件名
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = '用户分配统计.xlsx';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1].replace(/['"]/g, '');
+                }
+            }
+
+            // 创建下载链接
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            return { success: true, message: '文件已开始下载' };
+        } catch (error) {
+            if (error.message.includes('401') || error.message.includes('token')) {
+                this.logout();
+                window.location.href = '/login';
+            }
+            throw error;
+        }
+    }
 }
 
 // 全局 API 实例

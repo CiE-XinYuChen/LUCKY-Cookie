@@ -14,6 +14,7 @@
                 <button type="button" class="btn btn-outline" onclick="showTab('buildings', event)">建筑管理</button>
                 <button type="button" class="btn btn-outline" onclick="showTab('rooms', event)">房间管理</button>
                 <button type="button" class="btn btn-outline" onclick="showTab('allocations', event)">分配管理</button>
+                <button type="button" class="btn btn-outline" onclick="showTab('statistics', event)">统计报告</button>
             </div>
         </div>
     </div>
@@ -456,6 +457,120 @@
         </div>
     </div>
 </div>
+
+<!-- 统计报告选项卡 -->
+<div id="statisticsTab" class="tab-content" style="display: none;">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">统计报告</h3>
+            <div style="display: flex; gap: 16px;">
+                <button class="btn btn-success" onclick="exportAllocations()">导出Excel报告</button>
+                <button class="btn btn-outline" onclick="refreshStatistics()">刷新数据</button>
+            </div>
+        </div>
+        <div class="card-content">
+            <div id="statisticsContent">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <!-- 基础统计卡片 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">用户统计</h4>
+                        </div>
+                        <div class="card-content">
+                            <div class="stat-item">
+                                <span class="stat-label">总用户数：</span>
+                                <span class="stat-value" id="totalUsers">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">已分配房间类型：</span>
+                                <span class="stat-value" id="roomTypeAllocatedUsers">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">未分配房间类型：</span>
+                                <span class="stat-value" id="roomTypeUnallocatedUsers">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 房间分配统计 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">房间分配统计</h4>
+                        </div>
+                        <div class="card-content">
+                            <div class="stat-item">
+                                <span class="stat-label">已选择具体房间：</span>
+                                <span class="stat-value" id="roomAllocatedUsers">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">未选择具体房间：</span>
+                                <span class="stat-value" id="roomUnallocatedUsers">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">已确认分配：</span>
+                                <span class="stat-value" id="confirmedUsers">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">未确认分配：</span>
+                                <span class="stat-value" id="unconfirmedUsers">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 房间类型统计 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">房间类型分布</h4>
+                        </div>
+                        <div class="card-content">
+                            <div class="stat-item">
+                                <span class="stat-label">分配到4人间：</span>
+                                <span class="stat-value" id="room4Users">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">分配到8人间：</span>
+                                <span class="stat-value" id="room8Users">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 床位统计 -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">床位使用情况</h4>
+                        </div>
+                        <div class="card-content">
+                            <div class="stat-item">
+                                <span class="stat-label">总床位数：</span>
+                                <span class="stat-value" id="totalBeds">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">已占用床位：</span>
+                                <span class="stat-value" id="occupiedBeds">-</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-label">空闲床位：</span>
+                                <span class="stat-value" id="availableBeds">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 房间类型分布图表 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">房间配置统计</h4>
+                    </div>
+                    <div class="card-content">
+                        <div id="roomCountsChart" style="min-height: 200px;">
+                            <!-- 房间类型统计将在这里显示 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -519,6 +634,9 @@ function showTab(tabName, event) {
             break;
         case 'allocations':
             loadRoomTypeAllocations();
+            break;
+        case 'statistics':
+            loadStatistics();
             break;
     }
 }
@@ -2233,6 +2351,76 @@ async function confirmEditLotteryRoomType() {
         loadRoomTypeAllocations(); // 重新加载分配列表
     } catch (error) {
         showAlert(error.message, 'error');
+    }
+}
+
+// 统计报告相关函数
+async function loadStatistics() {
+    try {
+        const response = await api.getDetailedStatistics();
+        const stats = response.statistics;
+        
+        // 更新统计数据显示
+        document.getElementById('totalUsers').textContent = stats.total_users || 0;
+        document.getElementById('roomTypeAllocatedUsers').textContent = stats.room_type_allocated_users || 0;
+        document.getElementById('roomTypeUnallocatedUsers').textContent = stats.room_type_unallocated_users || 0;
+        document.getElementById('roomAllocatedUsers').textContent = stats.room_allocated_users || 0;
+        document.getElementById('roomUnallocatedUsers').textContent = stats.room_unallocated_users || 0;
+        document.getElementById('confirmedUsers').textContent = stats.confirmed_users || 0;
+        document.getElementById('unconfirmedUsers').textContent = stats.unconfirmed_users || 0;
+        document.getElementById('room4Users').textContent = stats.room_4_users || 0;
+        document.getElementById('room8Users').textContent = stats.room_8_users || 0;
+        document.getElementById('totalBeds').textContent = stats.total_beds || 0;
+        document.getElementById('occupiedBeds').textContent = stats.occupied_beds || 0;
+        document.getElementById('availableBeds').textContent = stats.available_beds || 0;
+        
+        // 显示房间配置统计
+        displayRoomCounts(stats.room_counts || {});
+        
+    } catch (error) {
+        showAlert('加载统计数据失败: ' + error.message, 'error');
+    }
+}
+
+function displayRoomCounts(roomCounts) {
+    const chartContainer = document.getElementById('roomCountsChart');
+    
+    if (Object.keys(roomCounts).length === 0) {
+        chartContainer.innerHTML = '<p style="text-align: center; color: #666;">暂无房间数据</p>';
+        return;
+    }
+    
+    let chartHtml = '<div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: center;">';
+    
+    Object.entries(roomCounts).forEach(([roomType, count]) => {
+        const percentage = count > 0 ? ((count / Object.values(roomCounts).reduce((a, b) => a + b, 0)) * 100).toFixed(1) : 0;
+        
+        chartHtml += `
+            <div class="stat-card" style="text-align: center; padding: 16px; border: 1px solid #ddd; border-radius: 8px; min-width: 120px;">
+                <div style="font-size: 24px; font-weight: bold; color: #333;">${count}</div>
+                <div style="font-size: 14px; color: #666; margin: 4px 0;">${roomType}人间</div>
+                <div style="font-size: 12px; color: #999;">${percentage}%</div>
+            </div>
+        `;
+    });
+    
+    chartHtml += '</div>';
+    chartContainer.innerHTML = chartHtml;
+}
+
+async function refreshStatistics() {
+    showAlert('正在刷新统计数据...', 'info');
+    await loadStatistics();
+    showAlert('统计数据已更新', 'success');
+}
+
+async function exportAllocations() {
+    try {
+        showAlert('正在生成Excel报告，请稍候...', 'info');
+        const result = await api.exportAllocations();
+        showAlert(result.message, 'success');
+    } catch (error) {
+        showAlert('导出失败: ' + error.message, 'error');
     }
 }
 </script>
