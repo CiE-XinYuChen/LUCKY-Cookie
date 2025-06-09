@@ -714,19 +714,31 @@ def get_room_type_allocations():
     conn = db.get_db()
     c = conn.cursor()
     
-    # Base query
+    # Combined query to get both manual allocations and lottery results
     base_query = '''
-        SELECT rta.*, u.name as user_name, u.username, 
-               a.name as allocator_name
-        FROM room_type_allocations rta
-        JOIN users u ON rta.user_id = u.id
+        SELECT 
+            u.id as user_id,
+            u.name as user_name, 
+            u.username,
+            COALESCE(rta.room_type, ls.room_type) as room_type,
+            COALESCE(rta.allocated_at, lr.created_at) as allocated_at,
+            COALESCE(a.name, '抽签系统') as allocator_name,
+            COALESCE(rta.notes, '通过抽签获得') as notes,
+            COALESCE(rta.id, lr.id) as id,
+            CASE WHEN rta.id IS NOT NULL THEN 'manual' ELSE 'lottery' END as allocation_type
+        FROM users u
+        LEFT JOIN room_type_allocations rta ON u.id = rta.user_id
+        LEFT JOIN lottery_results lr ON u.id = lr.user_id
+        LEFT JOIN lottery_settings ls ON lr.lottery_id = ls.id AND ls.is_published = 1
         LEFT JOIN users a ON rta.allocated_by = a.id
+        WHERE u.is_admin = 0 
+        AND (rta.user_id IS NOT NULL OR lr.user_id IS NOT NULL)
     '''
     
     # Add search filter if provided
     params = []
     if search:
-        base_query += ' WHERE u.name LIKE ? OR u.username LIKE ?'
+        base_query += ' AND (u.name LIKE ? OR u.username LIKE ?)'
         params.extend([f'%{search}%', f'%{search}%'])
     
     # Get total count
@@ -738,7 +750,7 @@ def get_room_type_allocations():
     total = c.fetchone()['total']
     
     # Add pagination
-    base_query += ' ORDER BY rta.allocated_at DESC LIMIT ? OFFSET ?'
+    base_query += ' ORDER BY allocated_at DESC LIMIT ? OFFSET ?'
     offset = (page - 1) * per_page
     params.extend([per_page, offset])
     
