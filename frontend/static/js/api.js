@@ -181,6 +181,14 @@ class API {
         return this.post('/api/admin/rooms', roomData);
     }
 
+    async updateRoom(roomId, roomData) {
+        return this.put(`/api/admin/rooms/${roomId}`, roomData);
+    }
+
+    async deleteRoom(roomId) {
+        return this.delete(`/api/admin/rooms/${roomId}`);
+    }
+
     async importRooms(file) {
         const formData = new FormData();
         formData.append('file', file);
@@ -294,7 +302,7 @@ class API {
     }
 
     async updateLotteryResult(resultId, data) {
-        return this.put(`/api/lottery/results/${resultId}`, data);
+        return this.put(`/api/admin/lottery/results/${resultId}`, data);
     }
 
     async getAvailableRooms(roomType = null, buildingId = null) {

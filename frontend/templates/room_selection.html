@@ -134,16 +134,19 @@ async function loadMySelection() {
                     </span>
                 </div>
             </div>
-            ${selection.is_confirmed ? `
-                <div class="alert alert-success">
-                    您的宿舍选择已确认，不能再更改。
-                </div>
-            ` : `
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                ${!selection.is_confirmed ? `
                     <button type="button" class="btn btn-success" onclick="confirmMySelection()">确认当前选择</button>
-                    <button type="button" class="btn btn-outline" onclick="cancelMySelection()">取消选择</button>
-                </div>
-            `}
+                ` : ''}
+                <button type="button" class="btn btn-outline" onclick="cancelMySelection()">
+                    ${selection.is_confirmed ? '取消已确认的选择' : '取消选择'}
+                </button>
+                ${selection.is_confirmed ? `
+                    <div class="alert alert-warning" style="margin-left: 16px; margin-bottom: 0;">
+                        ⚠️ 您的选择已确认，但仍可取消重新选择
+                    </div>
+                ` : ''}
+            </div>
         `;
     } catch (error) {
         document.getElementById('mySelection').innerHTML = `
@@ -191,8 +194,7 @@ async function loadAvailableRooms() {
                         <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px;">
                             ${room.beds.filter(bed => !bed.is_occupied).map(bed => `
                                 <button class="btn btn-outline" 
-                                        onclick="selectBed(${bed.id}, '${room.building_name}', '${room.room_number}', '${bed.bed_number}', ${JSON.stringify(room.occupied_users).replace(/"/g, '&quot;')})"
-                                        ${myCurrentSelection && myCurrentSelection.is_confirmed ? 'disabled' : ''}>
+                                        onclick="selectBed(${bed.id}, '${room.building_name}', '${room.room_number}', '${bed.bed_number}', ${JSON.stringify(room.occupied_users).replace(/"/g, '&quot;')})">
                                     床位 ${bed.bed_number}
                                 </button>
                             `).join('')}
@@ -209,15 +211,17 @@ async function loadAvailableRooms() {
 }
 
 function selectBed(bedId, buildingName, roomNumber, bedNumber, occupiedUsers) {
-    if (myCurrentSelection && myCurrentSelection.is_confirmed) {
-        showAlert('您的选择已确认，不能再更改', 'warning');
-        return;
-    }
     
     selectedBedId = bedId;
     
-    document.getElementById('confirmMessage').textContent = 
-        `确定要选择 ${buildingName} ${roomNumber} 房间的 ${bedNumber} 号床位吗？`;
+    let confirmMessage = `确定要选择 ${buildingName} ${roomNumber} 房间的 ${bedNumber} 号床位吗？`;
+    if (myCurrentSelection) {
+        confirmMessage += myCurrentSelection.is_confirmed ? 
+            '\n\n注意：这将取消您已确认的选择并选择新的床位。' : 
+            '\n\n注意：这将替换您当前的选择。';
+    }
+    
+    document.getElementById('confirmMessage').textContent = confirmMessage;
     
     const roommatesContainer = document.getElementById('roommates');
     if (occupiedUsers.length > 0) {
@@ -276,7 +280,11 @@ async function confirmMySelection() {
 }
 
 async function cancelMySelection() {
-    if (!confirm('确定要取消当前选择吗？取消后可以重新选择其他宿舍。')) return;
+    const message = myCurrentSelection && myCurrentSelection.is_confirmed ? 
+        '确定要取消已确认的选择吗？取消后您将需要重新选择宿舍。' : 
+        '确定要取消当前选择吗？取消后可以重新选择其他宿舍。';
+    
+    if (!confirm(message)) return;
     
     try {
         await api.cancelSelection();

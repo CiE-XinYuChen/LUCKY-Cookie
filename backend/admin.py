@@ -541,6 +541,114 @@ def get_room_detail(room_id):
     
     return jsonify({'room': room}), 200
 
+@admin_bp.route('/rooms/<int:room_id>', methods=['PUT'])
+@admin_required
+def update_room(room_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    try:
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if room exists
+            c.execute('SELECT * FROM rooms WHERE id = ?', (room_id,))
+            room = c.fetchone()
+            if not room:
+                return jsonify({'error': '房间不存在'}), 404
+            
+            # Update room fields
+            update_fields = []
+            update_params = []
+            
+            if 'room_number' in data:
+                update_fields.append('room_number = ?')
+                update_params.append(data['room_number'])
+            
+            if 'room_type' in data:
+                update_fields.append('room_type = ?')
+                update_params.append(data['room_type'])
+            
+            if 'max_capacity' in data:
+                new_capacity = int(data['max_capacity'])
+                old_capacity = room['max_capacity']
+                
+                update_fields.append('max_capacity = ?')
+                update_params.append(new_capacity)
+                
+                # Update beds if capacity changed
+                if new_capacity != old_capacity:
+                    if new_capacity > old_capacity:
+                        # Add new beds
+                        for i in range(old_capacity + 1, new_capacity + 1):
+                            c.execute(
+                                'INSERT INTO beds (room_id, bed_number) VALUES (?, ?)',
+                                (room_id, str(i))
+                            )
+                    elif new_capacity < old_capacity:
+                        # Remove excess beds (only if not occupied)
+                        c.execute(
+                            'SELECT COUNT(*) as occupied FROM beds WHERE room_id = ? AND bed_number > ? AND is_occupied = 1',
+                            (room_id, str(new_capacity))
+                        )
+                        occupied_count = c.fetchone()['occupied']
+                        if occupied_count > 0:
+                            return jsonify({'error': f'无法减少容量，有 {occupied_count} 个床位已被占用'}), 400
+                        
+                        # Delete excess beds
+                        c.execute(
+                            'DELETE FROM beds WHERE room_id = ? AND bed_number > ?',
+                            (room_id, str(new_capacity))
+                        )
+            
+            if 'is_available' in data:
+                update_fields.append('is_available = ?')
+                update_params.append(1 if data['is_available'] else 0)
+            
+            if update_fields:
+                update_params.append(room_id)
+                c.execute(f'UPDATE rooms SET {", ".join(update_fields)} WHERE id = ?', update_params)
+        
+        return jsonify({'message': '房间更新成功'}), 200
+    except Exception as e:
+        return jsonify({'error': f'更新失败: {str(e)}'}), 500
+
+@admin_bp.route('/rooms/<int:room_id>', methods=['DELETE'])
+@admin_required
+def delete_room(room_id):
+    try:
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if room exists
+            c.execute('SELECT * FROM rooms WHERE id = ?', (room_id,))
+            room = c.fetchone()
+            if not room:
+                return jsonify({'error': '房间不存在'}), 404
+            
+            # Check if any beds are occupied
+            c.execute('SELECT COUNT(*) as occupied FROM beds WHERE room_id = ? AND is_occupied = 1', (room_id,))
+            occupied_count = c.fetchone()['occupied']
+            if occupied_count > 0:
+                return jsonify({'error': f'无法删除房间，有 {occupied_count} 个床位已被学生选择'}), 400
+            
+            # Check if there are any room selections for this room
+            c.execute('SELECT COUNT(*) as selections FROM room_selections WHERE room_id = ?', (room_id,))
+            selection_count = c.fetchone()['selections']
+            if selection_count > 0:
+                return jsonify({'error': '无法删除房间，存在相关的房间选择记录'}), 400
+            
+            # Delete beds first (foreign key constraint)
+            c.execute('DELETE FROM beds WHERE room_id = ?', (room_id,))
+            
+            # Delete room
+            c.execute('DELETE FROM rooms WHERE id = ?', (room_id,))
+        
+        return jsonify({'message': '房间删除成功'}), 200
+    except Exception as e:
+        return jsonify({'error': f'删除失败: {str(e)}'}), 500
+
 @admin_bp.route('/allocations', methods=['GET'])
 @admin_required
 def get_allocations():
@@ -711,6 +819,198 @@ def get_statistics():
     
     return jsonify({'statistics': stats}), 200
 
+@admin_bp.route('/lottery/quick-draw', methods=['POST'])
+@admin_required
+def quick_lottery_draw():
+    data = request.get_json()
+    
+    if not data or not all(key in data for key in ['lottery_name', 'room_type']):
+        return jsonify({'error': '抽签名称和房间类型不能为空'}), 400
+    
+    # 获取四人寝和六人寝数量（如果提供）
+    room_4_count = data.get('room_4_count', 0)
+    room_6_count = data.get('room_6_count', 0)
+    
+    # 如果没有提供具体数量，使用传统的单一房间类型模式
+    if room_4_count == 0 and room_6_count == 0:
+        if data['room_type'] not in ['4', '8']:
+            return jsonify({'error': '房间类型只能是4或8'}), 400
+        
+        # 传统模式：所有用户分配到同一类型房间
+        if data['room_type'] == '4':
+            room_4_count = 999999  # 使用一个很大的数字表示不限制
+        else:
+            room_6_count = 999999
+    
+    try:
+        from datetime import datetime
+        
+        # 创建抽签设置
+        lottery_id = db.create_lottery(
+            data['lottery_name'],
+            datetime.now().isoformat(),
+            data.get('room_type', 'mixed')  # 混合类型
+        )
+        
+        # 获取所有非管理员用户
+        conn = db.get_db()
+        c = conn.cursor()
+        c.execute('SELECT id FROM users WHERE is_admin = 0')
+        users = c.fetchall()
+        conn.close()
+        
+        if not users:
+            return jsonify({'error': '没有可参与抽签的用户'}), 400
+        
+        # 打乱用户顺序
+        import random
+        user_ids = [user['id'] for user in users]
+        random.shuffle(user_ids)
+        
+        # 计算分配
+        total_4_beds = room_4_count * 4 if room_4_count != 999999 else len(user_ids)
+        total_6_beds = room_6_count * 6 if room_6_count != 999999 else len(user_ids)
+        
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            allocated_users = 0
+            group_4_count = 0
+            group_6_count = 0
+            
+            # 先分配四人寝
+            if room_4_count > 0:
+                needed_4_groups = min(room_4_count, (len(user_ids) + 3) // 4) if room_4_count != 999999 else (len(user_ids) + 3) // 4
+                for group in range(needed_4_groups):
+                    start_idx = allocated_users
+                    end_idx = min(allocated_users + 4, len(user_ids))
+                    if start_idx >= len(user_ids):
+                        break
+                    
+                    group_4_count += 1
+                    
+                    for i in range(start_idx, end_idx):
+                        c.execute(
+                            'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, group_number, room_type) VALUES (?, ?, ?, ?, ?)',
+                            (user_ids[i], lottery_id, i + 1, f'4-{group_4_count}', '4')
+                        )
+                    
+                    allocated_users = end_idx
+            
+            # 再分配六人寝（如果还有用户）
+            if room_6_count > 0 and allocated_users < len(user_ids):
+                needed_6_groups = min(room_6_count, (len(user_ids) - allocated_users + 5) // 6) if room_6_count != 999999 else (len(user_ids) - allocated_users + 5) // 6
+                for group in range(needed_6_groups):
+                    start_idx = allocated_users
+                    end_idx = min(allocated_users + 6, len(user_ids))
+                    if start_idx >= len(user_ids):
+                        break
+                    
+                    group_6_count += 1
+                    
+                    for i in range(start_idx, end_idx):
+                        c.execute(
+                            'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, group_number, room_type) VALUES (?, ?, ?, ?, ?)',
+                            (user_ids[i], lottery_id, i + 1, f'6-{group_6_count}', '6')
+                        )
+                    
+                    allocated_users = end_idx
+        
+        return jsonify({
+            'message': '抽签生成成功',
+            'lottery_id': lottery_id,
+            'total_participants': len(user_ids),
+            'allocated_participants': allocated_users,
+            'room_4_groups': group_4_count,
+            'room_6_groups': group_6_count
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'抽签失败: {str(e)}'}), 500
+
+@admin_bp.route('/lottery/<int:lottery_id>/publish', methods=['POST'])
+@admin_required
+def publish_lottery_results(lottery_id):
+    try:
+        db.publish_lottery(lottery_id)
+        return jsonify({'message': '抽签结果已发布'}), 200
+    except Exception as e:
+        return jsonify({'error': f'发布失败: {str(e)}'}), 500
+
+@admin_bp.route('/lottery/<int:lottery_id>', methods=['DELETE'])
+@admin_required
+def delete_lottery_results(lottery_id):
+    try:
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            # 删除抽签结果
+            c.execute('DELETE FROM lottery_results WHERE lottery_id = ?', (lottery_id,))
+            # 删除抽签设置
+            c.execute('DELETE FROM lottery_settings WHERE id = ?', (lottery_id,))
+        
+        return jsonify({'message': '抽签结果已删除'}), 200
+    except Exception as e:
+        return jsonify({'error': f'删除失败: {str(e)}'}), 500
+
+@admin_bp.route('/lottery/results', methods=['GET'])
+@admin_required
+def get_all_lottery_results():
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    lottery_id = request.args.get('lottery_id', type=int)
+    
+    conn = db.get_db()
+    c = conn.cursor()
+    
+    base_query = '''
+        SELECT lr.*, u.name as user_name, u.username,
+               ls.lottery_name, ls.is_published
+        FROM lottery_results lr
+        JOIN users u ON lr.user_id = u.id
+        JOIN lottery_settings ls ON lr.lottery_id = ls.id
+    '''
+    
+    if lottery_id:
+        base_query += ' WHERE lr.lottery_id = ?'
+        params = (lottery_id,)
+    else:
+        params = ()
+    
+    base_query += ' ORDER BY lr.lottery_number'
+    
+    # 分页
+    offset = (page - 1) * per_page
+    if params:
+        c.execute(base_query + ' LIMIT ? OFFSET ?', params + (per_page, offset))
+    else:
+        c.execute(base_query + ' LIMIT ? OFFSET ?', (per_page, offset))
+    
+    results = c.fetchall()
+    
+    # 获取总数
+    count_query = '''
+        SELECT COUNT(*) as total
+        FROM lottery_results lr
+        JOIN lottery_settings ls ON lr.lottery_id = ls.id
+    '''
+    if lottery_id:
+        count_query += ' WHERE lr.lottery_id = ?'
+        c.execute(count_query, (lottery_id,))
+    else:
+        c.execute(count_query)
+    
+    total = c.fetchone()['total']
+    conn.close()
+    
+    pages = (total + per_page - 1) // per_page
+    
+    return jsonify({
+        'results': [lottery_result_to_dict(r) for r in results],
+        'total': total,
+        'pages': pages,
+        'current_page': page
+    }), 200
+
 @admin_bp.route('/allocation-history', methods=['GET'])
 @admin_required
 def get_allocation_history():
@@ -862,3 +1162,109 @@ def update_allocation(allocation_id):
         return jsonify({'message': '分配更新成功'}), 200
     except Exception as e:
         return jsonify({'error': '更新失败'}), 500
+
+@admin_bp.route('/lottery/results/<int:result_id>', methods=['PUT'])
+@admin_required
+def update_lottery_result(result_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    try:
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if lottery result exists
+            c.execute('SELECT * FROM lottery_results WHERE id = ?', (result_id,))
+            result = c.fetchone()
+            if not result:
+                return jsonify({'error': '抽签结果不存在'}), 404
+            
+            # Check if lottery is still draft (not published)
+            c.execute('SELECT is_published FROM lottery_settings WHERE id = ?', (result['lottery_id'],))
+            lottery_setting = c.fetchone()
+            if lottery_setting and lottery_setting['is_published']:
+                return jsonify({'error': '已发布的抽签结果不能修改'}), 400
+            
+            # Update fields
+            update_fields = []
+            update_params = []
+            
+            if 'lottery_number' in data:
+                update_fields.append('lottery_number = ?')
+                update_params.append(data['lottery_number'])
+            
+            if 'group_number' in data:
+                update_fields.append('group_number = ?')
+                update_params.append(data['group_number'])
+            
+            if 'room_type' in data:
+                update_fields.append('room_type = ?')
+                update_params.append(data['room_type'])
+            
+            if update_fields:
+                update_params.append(result_id)
+                c.execute(f'UPDATE lottery_results SET {", ".join(update_fields)} WHERE id = ?', update_params)
+        
+        return jsonify({'message': '抽签结果更新成功'}), 200
+    except Exception as e:
+        return jsonify({'error': f'更新失败: {str(e)}'}), 500
+
+@admin_bp.route('/room-type-allocations/<int:allocation_id>', methods=['PUT'])
+@admin_required
+def update_room_type_allocation(allocation_id):
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': '请求数据不能为空'}), 400
+    
+    try:
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if allocation exists
+            c.execute('SELECT * FROM room_type_allocations WHERE id = ?', (allocation_id,))
+            allocation = c.fetchone()
+            if not allocation:
+                return jsonify({'error': '寝室类型分配不存在'}), 404
+            
+            # Update fields
+            update_fields = []
+            update_params = []
+            
+            if 'room_type' in data:
+                if data['room_type'] not in ['4', '8']:
+                    return jsonify({'error': '房间类型必须是4或8'}), 400
+                update_fields.append('room_type = ?')
+                update_params.append(data['room_type'])
+            
+            if 'notes' in data:
+                update_fields.append('notes = ?')
+                update_params.append(data['notes'])
+            
+            if update_fields:
+                update_params.append(allocation_id)
+                c.execute(f'UPDATE room_type_allocations SET {", ".join(update_fields)} WHERE id = ?', update_params)
+        
+        return jsonify({'message': '寝室类型分配更新成功'}), 200
+    except Exception as e:
+        return jsonify({'error': '更新失败'}), 500
+
+@admin_bp.route('/room-type-allocations/<int:allocation_id>', methods=['DELETE'])
+@admin_required
+def delete_room_type_allocation(allocation_id):
+    try:
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if allocation exists
+            c.execute('SELECT * FROM room_type_allocations WHERE id = ?', (allocation_id,))
+            allocation = c.fetchone()
+            if not allocation:
+                return jsonify({'error': '寝室类型分配不存在'}), 404
+            
+            # Delete allocation
+            c.execute('DELETE FROM room_type_allocations WHERE id = ?', (allocation_id,))
+        
+        return jsonify({'message': '寝室类型分配删除成功'}), 200
+    except Exception as e:
+        return jsonify({'error': '删除失败'}), 500

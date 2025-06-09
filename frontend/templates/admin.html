@@ -342,13 +342,49 @@
                     <input type="text" id="lotteryName" class="form-input" required placeholder="例如：2024年春季宿舍抽签">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">房间类型</label>
-                    <select id="lotteryRoomType" class="form-input" required>
-                        <option value="">请选择房间类型</option>
-                        <option value="4">4人间</option>
-                        <option value="8">8人间</option>
+                    <label class="form-label">分配模式</label>
+                    <select id="allocationMode" class="form-input" onchange="toggleAllocationMode()" required>
+                        <option value="">请选择分配模式</option>
+                        <option value="single">单一房间类型</option>
+                        <option value="mixed">混合房间类型</option>
                     </select>
                 </div>
+                
+                <!-- 单一房间类型模式 -->
+                <div id="singleModeOptions" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">房间类型</label>
+                        <select id="lotteryRoomType" class="form-input">
+                            <option value="">请选择房间类型</option>
+                            <option value="4">4人间</option>
+                            <option value="8">8人间</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 混合房间类型模式 -->
+                <div id="mixedModeOptions" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">四人间数量</label>
+                        <input type="number" id="room4Count" class="form-input" min="0" value="0" onchange="updateQuickLotteryPreview()">
+                        <small class="form-help">四人间可容纳人数: <span id="quick_room4Capacity">0</span></small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">八人间数量</label>
+                        <input type="number" id="room8Count" class="form-input" min="0" value="0" onchange="updateQuickLotteryPreview()">
+                        <small class="form-help">八人间可容纳人数: <span id="quick_room8Capacity">0</span></small>
+                    </div>
+                    <div class="form-group">
+                        <div style="background: #f5f5f5; padding: 12px; border-radius: 4px;">
+                            <div><strong>总床位数:</strong> <span id="quick_totalBeds">0</span></div>
+                            <div><strong>参与用户数:</strong> <span id="quick_totalUsers">0</span></div>
+                            <div id="quick_allocationWarning" style="color: #d32f2f; margin-top: 8px; display: none;">
+                                ⚠️ 床位数不足，部分用户将无法分配
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="form-group">
                     <p class="form-text">系统将自动为所有非管理员用户生成抽签号码，抽签结果默认保存为草稿状态，您可以选择发布或删除。</p>
                 </div>
@@ -374,6 +410,43 @@
         </div>
         <div class="modal-actions">
             <button type="button" class="btn btn-outline" onclick="hideLotteryResultsModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑房间模态框 -->
+<div id="editRoomModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">编辑房间</h3>
+        </div>
+        <div class="modal-content">
+            <form id="editRoomForm">
+                <div class="form-group">
+                    <label class="form-label">房间号</label>
+                    <input type="text" id="editRoomNumber" class="form-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">房间类型</label>
+                    <select id="editRoomType" class="form-input" required>
+                        <option value="4">4人间</option>
+                        <option value="8">8人间</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">最大容量</label>
+                    <input type="number" id="editMaxCapacity" class="form-input" required min="1" max="8">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="editIsAvailable"> 房间可用
+                    </label>
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideEditRoomModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="updateRoom()">保存</button>
         </div>
     </div>
 </div>
@@ -689,6 +762,64 @@ async function deleteBuilding(buildingId) {
 }
 
 // 房间管理相关函数
+let currentEditingRoomId = null;
+
+function editRoom(roomId, roomNumber, roomType, maxCapacity, isAvailable) {
+    currentEditingRoomId = roomId;
+    
+    document.getElementById('editRoomNumber').value = roomNumber;
+    document.getElementById('editRoomType').value = roomType;
+    document.getElementById('editMaxCapacity').value = maxCapacity;
+    document.getElementById('editIsAvailable').checked = isAvailable;
+    
+    document.getElementById('editRoomModal').style.display = 'flex';
+}
+
+function hideEditRoomModal() {
+    document.getElementById('editRoomModal').style.display = 'none';
+    document.getElementById('editRoomForm').reset();
+    currentEditingRoomId = null;
+}
+
+async function updateRoom() {
+    if (!currentEditingRoomId) return;
+    
+    const roomNumber = document.getElementById('editRoomNumber').value.trim();
+    const roomType = document.getElementById('editRoomType').value;
+    const maxCapacity = parseInt(document.getElementById('editMaxCapacity').value);
+    const isAvailable = document.getElementById('editIsAvailable').checked;
+    
+    if (!roomNumber || !roomType || !maxCapacity) {
+        showAlert('请填写所有必填字段', 'error');
+        return;
+    }
+    
+    try {
+        await api.updateRoom(currentEditingRoomId, {
+            room_number: roomNumber,
+            room_type: roomType,
+            max_capacity: maxCapacity,
+            is_available: isAvailable
+        });
+        showAlert('房间更新成功', 'success');
+        hideEditRoomModal();
+        loadRooms();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function deleteRoom(roomId, roomInfo) {
+    if (!confirm(`确定要删除房间 ${roomInfo} 吗？删除前请确保该房间没有学生入住。`)) return;
+    
+    try {
+        await api.deleteRoom(roomId);
+        showAlert('房间删除成功', 'success');
+        loadRooms();
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
 async function loadBuildingsForFilter() {
     try {
         const response = await api.getBuildings();
@@ -726,6 +857,7 @@ async function loadRooms() {
                         <th>当前入住</th>
                         <th>状态</th>
                         <th>可用床位</th>
+                        <th>操作</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -738,6 +870,10 @@ async function loadRooms() {
                             <td>${room.current_occupancy}</td>
                             <td>${room.is_available ? '可用' : '不可用'}</td>
                             <td>${room.available_beds}</td>
+                            <td>
+                                <button class="btn btn-outline btn-sm" style="margin-right: 8px;" onclick="editRoom(${room.id}, '${room.room_number}', '${room.room_type}', ${room.max_capacity}, ${room.is_available})">编辑</button>
+                                <button class="btn btn-error btn-sm" onclick="deleteRoom(${room.id}, '${room.building_name}-${room.room_number}')">删除</button>
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -1207,9 +1343,28 @@ document.querySelectorAll('.modal-overlay').forEach(modal => {
     });
 });
 
+// 专门为编辑房间模态框添加点击关闭事件
+document.getElementById('editRoomModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideEditRoomModal();
+    }
+});
+
 // 房间类型和容量联动
 document.getElementById('roomType').addEventListener('change', function() {
     const maxCapacityInput = document.getElementById('maxCapacity');
+    const value = this.value;
+    
+    if (value === '4') {
+        maxCapacityInput.value = '4';
+    } else if (value === '8') {
+        maxCapacityInput.value = '8';
+    }
+});
+
+// 编辑房间的房间类型和容量联动
+document.getElementById('editRoomType').addEventListener('change', function() {
+    const maxCapacityInput = document.getElementById('editMaxCapacity');
     const value = this.value;
     
     if (value === '4') {
@@ -1366,6 +1521,56 @@ async function deleteRoomTypeAllocation(allocationId) {
 }
 
 // 抽签管理相关函数
+function toggleAllocationMode() {
+    const mode = document.getElementById('allocationMode').value;
+    const singleModeOptions = document.getElementById('singleModeOptions');
+    const mixedModeOptions = document.getElementById('mixedModeOptions');
+    
+    if (mode === 'single') {
+        singleModeOptions.style.display = 'block';
+        mixedModeOptions.style.display = 'none';
+    } else if (mode === 'mixed') {
+        singleModeOptions.style.display = 'none';
+        mixedModeOptions.style.display = 'block';
+        updateQuickLotteryPreview();
+    } else {
+        singleModeOptions.style.display = 'none';
+        mixedModeOptions.style.display = 'none';
+    }
+}
+
+async function updateQuickLotteryPreview() {
+    const room4Count = parseInt(document.getElementById('room4Count').value) || 0;
+    const room8Count = parseInt(document.getElementById('room8Count').value) || 0;
+    
+    const room4Capacity = room4Count * 4;
+    const room8Capacity = room8Count * 8;
+    const totalBeds = room4Capacity + room8Capacity;
+    
+    document.getElementById('quick_room4Capacity').textContent = room4Capacity;
+    document.getElementById('quick_room8Capacity').textContent = room8Capacity;
+    document.getElementById('quick_totalBeds').textContent = totalBeds;
+    
+    try {
+        // 获取参与用户数
+        const response = await api.getUsers(1, 1000); // 获取所有用户
+        const nonAdminUsers = response.users.filter(user => !user.is_admin);
+        const totalUsers = nonAdminUsers.length;
+        
+        document.getElementById('quick_totalUsers').textContent = totalUsers;
+        
+        const warning = document.getElementById('quick_allocationWarning');
+        if (totalBeds < totalUsers && totalBeds > 0) {
+            warning.style.display = 'block';
+            warning.textContent = `⚠️ 床位数不足，将有 ${totalUsers - totalBeds} 名用户无法分配`;
+        } else {
+            warning.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('获取用户信息失败:', error);
+    }
+}
+
 function showQuickLotteryModal() {
     document.getElementById('quickLotteryModal').style.display = 'flex';
 }
@@ -1377,21 +1582,43 @@ function hideQuickLotteryModal() {
 
 async function performQuickLottery() {
     const lotteryName = document.getElementById('lotteryName').value.trim();
-    const roomType = document.getElementById('lotteryRoomType').value;
+    const allocationMode = document.getElementById('allocationMode').value;
     
-    if (!lotteryName || !roomType) {
+    if (!lotteryName || !allocationMode) {
         showAlert('请填写所有必填字段', 'error');
         return;
+    }
+    
+    const lotteryData = {
+        lottery_name: lotteryName
+    };
+    
+    if (allocationMode === 'single') {
+        const roomType = document.getElementById('lotteryRoomType').value;
+        if (!roomType) {
+            showAlert('请选择房间类型', 'error');
+            return;
+        }
+        lotteryData.room_type = roomType;
+    } else if (allocationMode === 'mixed') {
+        const room4Count = parseInt(document.getElementById('room4Count').value) || 0;
+        const room8Count = parseInt(document.getElementById('room8Count').value) || 0;
+        
+        if (room4Count === 0 && room8Count === 0) {
+            showAlert('四人间和八人间数量不能都为0', 'error');
+            return;
+        }
+        
+        lotteryData.room_type = 'mixed';
+        lotteryData.room_4_count = room4Count;
+        lotteryData.room_6_count = room8Count;
     }
     
     const button = event.target;
     const hideLoading = showLoading(button);
     
     try {
-        const response = await api.quickLotteryDraw({
-            lottery_name: lotteryName,
-            room_type: roomType
-        });
+        const response = await api.quickLotteryDraw(lotteryData);
         
         hideQuickLotteryModal();
         showAlert(response.message, 'success');
@@ -1408,12 +1635,25 @@ async function performQuickLottery() {
 }
 
 function showLotteryConfirmDialog(lotteryData) {
+    let roomTypeInfo = '';
+    if (lotteryData.room_4_groups && lotteryData.room_6_groups) {
+        roomTypeInfo = `混合类型 (${lotteryData.room_4_groups}个四人间组, ${lotteryData.room_6_groups}个八人间组)`;
+    } else if (lotteryData.room_4_groups) {
+        roomTypeInfo = `四人间 (${lotteryData.room_4_groups}个组)`;
+    } else if (lotteryData.room_6_groups) {
+        roomTypeInfo = `八人间 (${lotteryData.room_6_groups}个组)`;
+    } else if (lotteryData.room_type) {
+        roomTypeInfo = `${lotteryData.room_type}人间`;
+    } else {
+        roomTypeInfo = '未指定';
+    }
+    
     const content = `
         <div style="margin-bottom: 16px;">
-            <p><strong>抽签名称：</strong>${lotteryData.lottery_name}</p>
-            <p><strong>房间类型：</strong>${lotteryData.room_type || lotteryData.total_groups ? '根据分组判断' : ''}人间</p>
-            <p><strong>参与人数：</strong>${lotteryData.total_participants}人</p>
-            <p><strong>分组数量：</strong>${lotteryData.total_groups}组</p>
+            <p><strong>抽签名称：</strong>${lotteryData.lottery_name || '未知抽签'}</p>
+            <p><strong>分配方式：</strong>${roomTypeInfo}</p>
+            <p><strong>参与人数：</strong>${lotteryData.total_participants || 0}人</p>
+            <p><strong>已分配人数：</strong>${lotteryData.allocated_participants || 0}人</p>
         </div>
         <div class="alert alert-warning">
             <p>抽签已完成并保存为草稿状态。请选择：</p>
@@ -1478,7 +1718,7 @@ function hideLotteryResultsModal() {
 
 async function loadLotteryResults() {
     try {
-        const response = await api.getAllLotteryResults(1, 50); // 显示更多结果
+        const response = await api.getAllLotteryResults(1, 100); // 显示更多结果
         
         if (!response.results || response.results.length === 0) {
             document.getElementById('lotteryResultsContent').innerHTML = '<p>暂无抽签结果</p>';
@@ -1487,24 +1727,34 @@ async function loadLotteryResults() {
         
         // 按抽签ID分组显示结果
         const groupedResults = {};
+        const lotterySettings = {};
+        
         response.results.forEach(result => {
             if (!groupedResults[result.lottery_id]) {
                 groupedResults[result.lottery_id] = [];
             }
             groupedResults[result.lottery_id].push(result);
+            
+            // 从结果中提取抽签设置信息
+            if (result.lottery_name && !lotterySettings[result.lottery_id]) {
+                lotterySettings[result.lottery_id] = {
+                    lottery_name: result.lottery_name,
+                    is_published: result.is_published
+                };
+            }
         });
         
         let html = '';
         Object.keys(groupedResults).forEach(lotteryId => {
-            const results = groupedResults[lotteryId];
-            const setting = response.settings[lotteryId];
+            const results = groupedResults[lotteryId].sort((a, b) => a.lottery_number - b.lottery_number);
+            const setting = lotterySettings[lotteryId];
             
             html += `
                 <div class="card" style="margin-bottom: 16px;">
                     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <h4>${setting ? setting.lottery_name : '未知抽签'}</h4>
-                            <small>创建时间: ${setting ? formatDate(setting.created_at) : ''} | 
+                            <small>参与人数: ${results.length} | 
                                    状态: ${setting && setting.is_published ? '已发布' : '草稿'}</small>
                         </div>
                         <div>
@@ -1515,21 +1765,29 @@ async function loadLotteryResults() {
                         </div>
                     </div>
                     <div class="card-content">
-                        <div style="max-height: 200px; overflow-y: auto;">
+                        <div style="max-height: 300px; overflow-y: auto;">
                             <table class="table">
                                 <thead>
                                     <tr>
                                         <th>抽签号</th>
                                         <th>姓名</th>
                                         <th>分组</th>
+                                        <th>房间类型</th>
+                                        ${setting && !setting.is_published ? '<th>操作</th>' : ''}
                                     </tr>
                                 </thead>
                                 <tbody>
                                     ${results.map(result => `
                                         <tr>
-                                            <td>${result.lottery_number}</td>
+                                            <td><strong>${result.lottery_number}</strong></td>
                                             <td>${result.user_name}</td>
-                                            <td>第${result.group_number}组</td>
+                                            <td>${result.group_number || '未分组'}</td>
+                                            <td>${result.room_type ? `${result.room_type}人间` : '未分配'}</td>
+                                            ${setting && !setting.is_published ? `
+                                                <td>
+                                                    <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.group_number || ''}', '${result.room_type || ''}')">编辑</button>
+                                                </td>
+                                            ` : ''}
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -1566,6 +1824,46 @@ async function deleteLottery(lotteryId) {
         const response = await api.deleteLotteryResults(lotteryId);
         showAlert(response.message, 'success');
         loadLotteryResults(); // 重新加载结果
+    } catch (error) {
+        showAlert(error.message, 'error');
+    }
+}
+
+async function editLotteryResultInModal(resultId, currentLotteryNumber, currentGroupNumber, currentRoomType) {
+    const newLotteryNumber = prompt('请输入新的抽签号码：', currentLotteryNumber);
+    if (newLotteryNumber === null || newLotteryNumber === '') {
+        return;
+    }
+    
+    if (isNaN(newLotteryNumber) || parseInt(newLotteryNumber) <= 0) {
+        showAlert('请输入有效的抽签号码', 'error');
+        return;
+    }
+    
+    const newGroupNumber = prompt('请输入新的分组号（可留空）：', currentGroupNumber);
+    const newRoomType = prompt('请输入房间类型（4或8，可留空）：', currentRoomType);
+    
+    if (newRoomType && !['4', '8', ''].includes(newRoomType)) {
+        showAlert('房间类型只能是4或8', 'error');
+        return;
+    }
+    
+    try {
+        const updateData = { 
+            lottery_number: parseInt(newLotteryNumber)
+        };
+        
+        if (newGroupNumber && newGroupNumber.trim() !== '') {
+            updateData.group_number = newGroupNumber.trim();
+        }
+        
+        if (newRoomType && newRoomType.trim() !== '') {
+            updateData.room_type = newRoomType.trim();
+        }
+        
+        await api.updateLotteryResult(resultId, updateData);
+        showAlert('抽签结果更新成功', 'success');
+        loadLotteryResults();
     } catch (error) {
         showAlert(error.message, 'error');
     }

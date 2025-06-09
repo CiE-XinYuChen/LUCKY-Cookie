@@ -61,10 +61,11 @@ def select_room():
         return jsonify({'error': '系统繁忙，请稍后重试'}), 503
     
     try:
-        # Check if user already has a selection
+        # Check if user already has a selection and cancel it if exists
         existing_selection = db.get_user_room_selection(current_user_id)
         if existing_selection:
-            return jsonify({'error': '您已经选择了宿舍，不能重复选择'}), 409
+            # Cancel existing selection
+            db.cancel_room_selection(current_user_id)
         
         # Check bed availability
         conn = db.get_db()
@@ -145,9 +146,6 @@ def cancel_selection():
     selection = db.get_user_room_selection(current_user_id)
     if not selection:
         return jsonify({'error': '您还没有选择宿舍'}), 404
-    
-    if selection['is_confirmed']:
-        return jsonify({'error': '已确认的选择不能取消'}), 400
     
     lock_key = f"bed_selection:{selection['bed_id']}"
     
@@ -236,8 +234,6 @@ def change_selection():
     if not selection:
         return jsonify({'error': '您还没有选择宿舍'}), 404
     
-    if selection['is_confirmed']:
-        return jsonify({'error': '已确认的选择不能更改'}), 400
     
     if selection['bed_id'] == new_bed_id:
         return jsonify({'error': '新床位与当前床位相同'}), 400
