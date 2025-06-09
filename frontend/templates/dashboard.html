@@ -123,23 +123,58 @@ let hasLotteryResult = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Dashboard DOMContentLoaded');
-    if (!requireAuth()) {
-        console.log('Auth check failed');
+    
+    // 检查API对象是否存在
+    if (typeof api === 'undefined') {
+        console.error('API object not found');
+        showError('系统初始化失败，请刷新页面重试');
+        return;
+    }
+    
+    // 检查token
+    console.log('Current token:', api.token ? 'exists' : 'missing');
+    if (!api.token) {
+        console.log('No token found, redirecting to login');
+        showError('您尚未登录，即将跳转到登录页面...');
+        setTimeout(() => {
+            window.location.href = '/login';
+        }, 2000);
         return;
     }
     
     console.log('Starting to load dashboard components');
-    loadUserInfo();
-    loadLotteryResults().then(() => {
-        loadRoomSelection();
-    }).catch(error => {
-        console.error('Error loading lottery results:', error);
-    });
+    
+    // 串行加载，避免并发问题
+    loadUserInfo()
+        .then(() => loadLotteryResults())
+        .then(() => loadRoomSelection())
+        .catch(error => {
+            console.error('Error in dashboard loading chain:', error);
+            showError('加载用户信息失败: ' + error.message);
+        });
 });
+
+function showError(message) {
+    const elements = ['statusOverview', 'userInfo', 'lotteryResults', 'roomSelection'];
+    elements.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.innerHTML = `
+                <div class="alert alert-error">
+                    <p>${message}</p>
+                    <button class="btn btn-outline" onclick="location.reload()">刷新页面</button>
+                </div>
+            `;
+        }
+    });
+}
 
 async function loadUserInfo() {
     console.log('Loading user info...');
     try {
+        // 先验证token是否有效
+        await api.verifyToken();
+        
         const response = await api.getProfile();
         console.log('Profile response:', response);
         userData = response.user;
