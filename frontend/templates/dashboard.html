@@ -6,7 +6,12 @@
 <div class="container">
     <div class="mb-8">
         <h1 style="margin-bottom: 0.5rem;">个人中心</h1>
-        <p class="text-muted">欢迎使用宿舍抽签系统</p>
+        <p class="text-muted">欢迎使用宿舍抽签系统，这里是您的个人信息和抽签状态总览</p>
+        
+        <!-- 快速状态概览 -->
+        <div class="stat-grid" style="margin-top: 1.5rem;" id="statusOverview">
+            <!-- 状态概览将通过JavaScript加载 -->
+        </div>
     </div>
     
     <!-- 用户信息卡片 -->
@@ -121,19 +126,43 @@ async function loadUserInfo() {
         document.getElementById('userInfo').innerHTML = `
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
                 <div class="stat-item" style="border-bottom: none; padding: 0;">
-                    <span class="stat-label">姓名</span>
-                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600;">${userData.name}</span>
+                    <span class="stat-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        姓名
+                    </span>
+                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600; color: var(--primary-color);">${userData.name}</span>
                 </div>
                 <div class="stat-item" style="border-bottom: none; padding: 0;">
-                    <span class="stat-label">用户名</span>
-                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600;">${userData.username}</span>
+                    <span class="stat-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="9" cy="9" r="2"></circle>
+                            <path d="M21 15.5c-.3-2.4-2.5-4.5-5-4.5s-4.7 2.1-5 4.5"></path>
+                        </svg>
+                        用户名
+                    </span>
+                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600; color: var(--secondary-color);">${userData.username}</span>
                 </div>
                 <div class="stat-item" style="border-bottom: none; padding: 0;">
-                    <span class="stat-label">注册时间</span>
+                    <span class="stat-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        注册时间
+                    </span>
                     <span class="stat-value" style="font-size: 1.125rem; font-weight: 600;">${formatDate(userData.created_at)}</span>
                 </div>
             </div>
         `;
+        
+        // 加载状态概览
+        loadStatusOverview();
     } catch (error) {
         showAlert(error.message, 'error');
     }
@@ -155,21 +184,31 @@ async function loadLotteryResults() {
                 `;
             } else {
                 container.innerHTML = `
-                    <div class="alert alert-info" style="text-align: center; background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg)); border: 1px solid var(--primary-light); padding: 2rem;">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem;">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <path d="M3 9h18"></path>
-                            <path d="M9 21V9"></path>
-                        </svg>
-                        <h4 style="color: var(--primary-dark); margin-bottom: 0.5rem;">宿舍抽签</h4>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">点击下方按钮参与宿舍抽签，系统将为您随机分配抽签号码</p>
-                        <button type="button" class="btn btn-primary" onclick="participateLottery()" style="font-size: 1.125rem; padding: 0.875rem 2rem; box-shadow: var(--shadow-md);">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
+                    <div style="text-align: center; padding: 3rem 2rem; background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg)); border-radius: var(--radius-lg); border: 1px solid var(--primary-light);">
+                        <div style="margin-bottom: 1.5rem;">
+                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <path d="M3 9h18"></path>
+                                <path d="M9 21V9"></path>
                             </svg>
-                            点击抽签
+                        </div>
+                        <h3 style="color: var(--primary-dark); margin-bottom: 0.5rem; font-size: 1.5rem;">宿舍抽签</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 1rem; max-width: 400px; margin-left: auto; margin-right: auto;">欢迎参与宿舍抽签！系统将为您随机分配抽签号码，根据号码顺序选择心仪的宿舍</p>
+                        <button type="button" class="btn btn-primary" onclick="participateLottery()" style="font-size: 1.125rem; padding: 1rem 2.5rem; box-shadow: var(--shadow-lg); border-radius: var(--radius-lg);">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polygon points="10 8 16 12 10 16"></polygon>
+                            </svg>
+                            开始抽签
                         </button>
+                        <div style="margin-top: 1.5rem; font-size: 0.875rem; color: var(--text-muted);">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="6" x2="12" y2="10"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            抽签结果将由管理员统一发布
+                        </div>
                     </div>
                 `;
             }
@@ -380,6 +419,103 @@ document.getElementById('changePasswordModal').addEventListener('click', functio
         hideChangePasswordModal();
     }
 });
+
+async function loadStatusOverview() {
+    try {
+        // 获取抽签结果状态
+        let lotteryStatus = '未参与';
+        let lotteryColor = 'var(--gray-400)';
+        let lotteryIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="6" x2="12" y2="10"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>`;
+        
+        // 获取宿舍选择状态
+        let roomStatus = '未选择';
+        let roomColor = 'var(--gray-400)';
+        let roomIcon = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>`;
+        
+        // 检查抽签结果
+        const lotteryResponse = await api.getLotteryResults();
+        if (lotteryResponse.results && lotteryResponse.results.length > 0) {
+            const result = lotteryResponse.results[0];
+            if (result.room_type) {
+                lotteryStatus = \`已分配 \${result.room_type}人间\`;
+                lotteryColor = 'var(--success-color)';
+                lotteryIcon = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>\`;
+            } else {
+                lotteryStatus = '已参与抽签';
+                lotteryColor = 'var(--warning-color)';
+                lotteryIcon = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 6v6l4 2"></path>
+                </svg>\`;
+            }
+        }
+        
+        // 检查宿舍选择
+        const selectionResponse = await api.getMySelection();
+        if (selectionResponse.selection) {
+            const selection = selectionResponse.selection;
+            if (selection.is_confirmed) {
+                roomStatus = \`\${selection.building_name} \${selection.room_number}-\${selection.bed_number}\`;
+                roomColor = 'var(--success-color)';
+                roomIcon = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>\`;
+            } else {
+                roomStatus = '已选择待确认';
+                roomColor = 'var(--warning-color)';
+                roomIcon = \`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 8v4l2 2"></path>
+                </svg>\`;
+            }
+        }
+        
+        document.getElementById('statusOverview').innerHTML = \`
+            <div class="stat-card" style="text-align: center;">
+                <div style="color: \${lotteryColor}; margin-bottom: 0.5rem;">
+                    \${lotteryIcon}
+                </div>
+                <div class="stat-label">抽签状态</div>
+                <div class="stat-value" style="color: \${lotteryColor};">\${lotteryStatus}</div>
+            </div>
+            <div class="stat-card" style="text-align: center;">
+                <div style="color: \${roomColor}; margin-bottom: 0.5rem;">
+                    \${roomIcon}
+                </div>
+                <div class="stat-label">宿舍状态</div>
+                <div class="stat-value" style="color: \${roomColor};">\${roomStatus}</div>
+            </div>
+            <div class="stat-card" style="text-align: center;">
+                <div style="color: var(--info-color); margin-bottom: 0.5rem;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <div class="stat-label">账户类型</div>
+                <div class="stat-value" style="color: var(--info-color);">学生用户</div>
+            </div>
+        \`;
+    } catch (error) {
+        console.error('加载状态概览失败:', error);
+        document.getElementById('statusOverview').innerHTML = \`
+            <div class="stat-card" style="text-align: center;">
+                <div class="stat-label">状态加载失败</div>
+                <div class="stat-value">请刷新页面重试</div>
+            </div>
+        \`;
+    }
+}
 </script>
 
 {% endblock %}
