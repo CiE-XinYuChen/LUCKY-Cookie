@@ -82,6 +82,8 @@ def create_lottery_setting():
 @lottery_bp.route('/settings/<int:setting_id>/publish', methods=['POST'])
 @admin_required
 def publish_lottery(setting_id):
+    data = request.get_json() or {}
+    
     conn = db.get_db()
     c = conn.cursor()
     c.execute('SELECT * FROM lottery_settings WHERE id = ?', (setting_id,))
@@ -116,28 +118,76 @@ def publish_lottery(setting_id):
         user_ids = [user['id'] for user in users]
         random.shuffle(user_ids)
         
-        # Save results
-        group_size = 4 if setting['room_type'] == '4' else 8
+        # 获取四人寝和六人寝数量
+        room_4_count = data.get('room_4_count', 0)
+        room_6_count = data.get('room_6_count', 0)
+        
+        # 计算分配
+        total_4_beds = room_4_count * 4
+        total_6_beds = room_6_count * 6
+        total_beds = total_4_beds + total_6_beds
+        
+        if total_beds == 0:
+            return jsonify({'error': '四人寝和六人寝数量不能都为0'}), 400
+        
+        if len(user_ids) > total_beds:
+            return jsonify({'error': f'参与用户数({len(user_ids)})超过总床位数({total_beds})'}), 400
         
         with db.get_db_connection() as conn:
             c = conn.cursor()
-            for i, user_id in enumerate(user_ids):
-                group_number = (i // group_size) + 1
-                c.execute(
-                    'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, group_number) VALUES (?, ?, ?, ?)',
-                    (user_id, setting_id, i + 1, group_number)
-                )
+            
+            # 分配用户到不同类型的寝室
+            allocated_users = 0
+            group_4_count = 0
+            group_6_count = 0
+            
+            # 先分配四人寝
+            for group in range(room_4_count):
+                start_idx = allocated_users
+                end_idx = min(allocated_users + 4, len(user_ids))
+                group_4_count += 1
+                
+                for i in range(start_idx, end_idx):
+                    c.execute(
+                        'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, group_number, room_type) VALUES (?, ?, ?, ?, ?)',
+                        (user_ids[i], setting_id, i + 1, f'4-{group_4_count}', '4')
+                    )
+                
+                allocated_users = end_idx
+                if allocated_users >= len(user_ids):
+                    break
+            
+            # 再分配六人寝
+            for group in range(room_6_count):
+                start_idx = allocated_users
+                end_idx = min(allocated_users + 6, len(user_ids))
+                if start_idx >= len(user_ids):
+                    break
+                
+                group_6_count += 1
+                
+                for i in range(start_idx, end_idx):
+                    c.execute(
+                        'INSERT INTO lottery_results (user_id, lottery_id, lottery_number, group_number, room_type) VALUES (?, ?, ?, ?, ?)',
+                        (user_ids[i], setting_id, i + 1, f'6-{group_6_count}', '6')
+                    )
+                
+                allocated_users = end_idx
             
             # Publish the lottery
             c.execute('UPDATE lottery_settings SET is_published = 1 WHERE id = ?', (setting_id,))
         
         return jsonify({
             'message': '抽签结果生成并公布成功',
-            'total_participants': len(users),
-            'total_groups': (len(users) - 1) // group_size + 1
+            'total_participants': len(user_ids),
+            'allocated_participants': allocated_users,
+            'room_4_groups': group_4_count,
+            'room_6_groups': group_6_count,
+            'total_4_beds': total_4_beds,
+            'total_6_beds': total_6_beds
         }), 200
     except Exception as e:
-        return jsonify({'error': '公布失败'}), 500
+        return jsonify({'error': f'公布失败: {str(e)}'}), 500
 
 @lottery_bp.route('/results', methods=['GET'])
 @jwt_required()

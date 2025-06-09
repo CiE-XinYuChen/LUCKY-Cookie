@@ -71,6 +71,53 @@
         </div>
     </div>
 </div>
+
+<!-- 房间分配模态框 -->
+<div id="roomAllocationModal" class="modal-overlay" style="display: none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">设置房间分配</h3>
+        </div>
+        <div class="modal-content">
+            <form id="roomAllocationForm">
+                <div class="form-group">
+                    <label class="form-label">四人间数量</label>
+                    <input type="number" id="room4Count" class="form-input" min="0" value="0" required>
+                    <small class="form-help">四人间可容纳人数: <span id="room4Capacity">0</span></small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">六人间数量</label>
+                    <input type="number" id="room6Count" class="form-input" min="0" value="0" required>
+                    <small class="form-help">六人间可容纳人数: <span id="room6Capacity">0</span></small>
+                </div>
+                <div class="form-group">
+                    <div style="background: #f5f5f5; padding: 12px; border-radius: 4px; margin-top: 16px;">
+                        <div><strong>总床位数:</strong> <span id="totalBeds">0</span></div>
+                        <div><strong>参与用户数:</strong> <span id="totalUsers">0</span></div>
+                        <div id="allocationWarning" style="color: #d32f2f; margin-top: 8px; display: none;">
+                            ⚠️ 床位数不足，部分用户将无法分配
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn btn-outline" onclick="hideRoomAllocationModal()">取消</button>
+            <button type="button" class="btn btn-primary" onclick="confirmRoomAllocation()">确认分配</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+.form-help {
+    font-size: 0.875rem;
+    color: #666;
+    margin-top: 4px;
+    display: block;
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
@@ -117,7 +164,7 @@ async function loadLotterySettings() {
                     ${isAdmin ? `
                         <div style="display: flex; gap: 8px;">
                             ${!setting.is_published ? `
-                                <button class="btn btn-success" onclick="publishLottery(${setting.id})">立即公布</button>
+                                <button class="btn btn-success" onclick="showRoomAllocationModal(${setting.id})">立即公布</button>
                             ` : ''}
                             <button class="btn btn-outline" onclick="viewLotteryResults(${setting.id})">查看结果</button>
                         </div>
@@ -151,6 +198,7 @@ async function loadLotteryResults(lotteryId = null) {
                         <th>抽签号码</th>
                         <th>学生姓名</th>
                         <th>分组号</th>
+                        <th>房间类型</th>
                         <th>抽签时间</th>
                         ${isAdmin ? '<th>操作</th>' : ''}
                     </tr>
@@ -161,6 +209,7 @@ async function loadLotteryResults(lotteryId = null) {
                             <td><strong>${result.lottery_number}</strong></td>
                             <td>${result.user_name}</td>
                             <td>${result.group_number || '未分组'}</td>
+                            <td>${result.room_type ? `${result.room_type}人间` : '未分配'}</td>
                             <td>${formatDate(result.created_at)}</td>
                             ${isAdmin ? `
                                 <td>
@@ -217,12 +266,82 @@ async function createLottery() {
     }
 }
 
-async function publishLottery(settingId) {
-    if (!confirm('确定要立即公布抽签结果吗？公布后将自动生成所有用户的抽签号码。')) return;
+let currentLotteryId = null;
+
+async function showRoomAllocationModal(settingId) {
+    currentLotteryId = settingId;
     
     try {
-        const response = await api.publishLottery(settingId);
-        showAlert(`抽签结果已公布！共有 ${response.total_participants} 名学生参与，分为 ${response.total_groups} 个组`, 'success');
+        // 获取参与用户数
+        const response = await api.getUsers(1, 1000); // 获取所有用户
+        const nonAdminUsers = response.users.filter(user => !user.is_admin);
+        const totalUsers = nonAdminUsers.length;
+        
+        document.getElementById('totalUsers').textContent = totalUsers;
+        document.getElementById('roomAllocationModal').style.display = 'flex';
+        
+        // 初始化计算
+        updateRoomCapacity();
+        
+        // 监听输入变化
+        document.getElementById('room4Count').addEventListener('input', updateRoomCapacity);
+        document.getElementById('room6Count').addEventListener('input', updateRoomCapacity);
+        
+    } catch (error) {
+        showAlert('获取用户信息失败: ' + error.message, 'error');
+    }
+}
+
+function hideRoomAllocationModal() {
+    document.getElementById('roomAllocationModal').style.display = 'none';
+    document.getElementById('roomAllocationForm').reset();
+    currentLotteryId = null;
+}
+
+function updateRoomCapacity() {
+    const room4Count = parseInt(document.getElementById('room4Count').value) || 0;
+    const room6Count = parseInt(document.getElementById('room6Count').value) || 0;
+    const totalUsers = parseInt(document.getElementById('totalUsers').textContent) || 0;
+    
+    const room4Capacity = room4Count * 4;
+    const room6Capacity = room6Count * 6;
+    const totalBeds = room4Capacity + room6Capacity;
+    
+    document.getElementById('room4Capacity').textContent = room4Capacity;
+    document.getElementById('room6Capacity').textContent = room6Capacity;
+    document.getElementById('totalBeds').textContent = totalBeds;
+    
+    const warning = document.getElementById('allocationWarning');
+    if (totalBeds < totalUsers) {
+        warning.style.display = 'block';
+        warning.textContent = `⚠️ 床位数不足，将有 ${totalUsers - totalBeds} 名用户无法分配`;
+    } else {
+        warning.style.display = 'none';
+    }
+}
+
+async function confirmRoomAllocation() {
+    if (!currentLotteryId) return;
+    
+    const room4Count = parseInt(document.getElementById('room4Count').value) || 0;
+    const room6Count = parseInt(document.getElementById('room6Count').value) || 0;
+    
+    if (room4Count === 0 && room6Count === 0) {
+        showAlert('四人间和六人间数量不能都为0', 'error');
+        return;
+    }
+    
+    if (!confirm('确定要按此配置立即公布抽签结果吗？公布后将自动生成所有用户的抽签号码。')) return;
+    
+    try {
+        const response = await api.publishLottery(currentLotteryId, {
+            room_4_count: room4Count,
+            room_6_count: room6Count
+        });
+        
+        showAlert(`抽签结果已公布！共有 ${response.total_participants} 名学生参与，已分配 ${response.allocated_participants} 名学生到 ${response.room_4_groups} 个四人间和 ${response.room_6_groups} 个六人间`, 'success');
+        
+        hideRoomAllocationModal();
         loadLotterySettings();
         loadLotteryResults();
     } catch (error) {

@@ -284,8 +284,8 @@ class API {
         return this.post('/api/lottery/settings', settingData);
     }
 
-    async publishLottery(settingId) {
-        return this.post(`/api/lottery/settings/${settingId}/publish`);
+    async publishLottery(settingId, roomCounts = {}) {
+        return this.post(`/api/lottery/settings/${settingId}/publish`, roomCounts);
     }
 
     async getLotteryResults(lotteryId = null) {

@@ -91,7 +91,8 @@ def init_db():
         user_id INTEGER NOT NULL,
         lottery_id INTEGER NOT NULL,
         lottery_number INTEGER NOT NULL,
-        group_number INTEGER,
+        group_number TEXT,
+        room_type TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id),
         FOREIGN KEY (lottery_id) REFERENCES lottery_settings(id),
@@ -140,6 +141,25 @@ def init_db():
     )''')
     
     conn.commit()
+    
+    # 检查并添加新字段（数据库迁移）
+    try:
+        # 检查lottery_results表是否有room_type字段
+        c.execute("PRAGMA table_info(lottery_results)")
+        columns = [column[1] for column in c.fetchall()]
+        
+        if 'room_type' not in columns:
+            c.execute('ALTER TABLE lottery_results ADD COLUMN room_type TEXT')
+            print("添加 room_type 字段到 lottery_results 表")
+        
+        # 检查group_number字段类型
+        if 'group_number' in columns:
+            # SQLite不支持直接修改字段类型，但由于我们存储的是字符串，这里不需要特殊处理
+            pass
+        
+        conn.commit()
+    except Exception as e:
+        print(f"数据库迁移错误: {e}")
     
     # Create default admin user if not exists
     c.execute('SELECT COUNT(*) as cnt FROM users WHERE username = ?', ('admin',))
