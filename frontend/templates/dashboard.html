@@ -4,264 +4,483 @@
 
 {% block content %}
 <div class="container">
-    <div class="mb-8">
-        <h1 style="margin-bottom: 0.5rem;">个人中心</h1>
-        <p class="text-muted">欢迎使用宿舍抽签系统，这里是您的个人信息和抽签状态总览</p>
+    <!-- 页面头部 -->
+    <header class="dashboard-header">
+        <div class="header-content">
+            <h1>个人中心</h1>
+            <p class="header-subtitle">欢迎使用宿舍抽签系统，这里是您的个人信息和抽签状态总览</p>
+        </div>
         
         <!-- 快速状态概览 -->
-        <div class="stat-grid" style="margin-top: 1.5rem;" id="statusOverview">
-            <!-- 状态概览将通过JavaScript加载 -->
-        </div>
-    </div>
-    
-    <!-- 用户信息卡片 -->
-    <div class="card animate-slideIn" style="margin-bottom: 1.5rem; border: none;">
-        <div class="card-header" style="background: linear-gradient(135deg, var(--primary-color), var(--primary-dark)); color: white; border-bottom: none;">
-            <h3 class="card-title" style="color: white; display: flex; align-items: center; gap: 0.5rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                个人信息
-            </h3>
-        </div>
-        <div class="card-content">
-            <div id="userInfo">
-                <!-- 用户信息将通过JavaScript加载 -->
+        <section class="status-overview" id="statusOverview">
+            <div class="loading-skeleton">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
             </div>
-            <button type="button" class="btn btn-outline" onclick="showChangePasswordModal()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-                修改密码
-            </button>
-        </div>
-    </div>
+        </section>
+    </header>
+    
+    <!-- 主要内容区域 -->
+    <main class="dashboard-main">
+        <!-- 用户信息卡片 -->
+        <section class="dashboard-section" data-section="user-info">
+            <div class="section-card user-info-card">
+                <header class="section-header">
+                    <h2 class="section-title">
+                        <svg class="section-icon" viewBox="0 0 24 24">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
+                        </svg>
+                        个人信息
+                    </h2>
+                </header>
+                <div class="section-content">
+                    <div id="userInfo" class="user-info-content">
+                        <div class="loading-skeleton">
+                            <div class="skeleton-text"></div>
+                            <div class="skeleton-text"></div>
+                            <div class="skeleton-text"></div>
+                        </div>
+                    </div>
+                    <div class="section-actions">
+                        <button type="button" class="btn btn-outline" id="changePasswordBtn">
+                            <svg class="btn-icon" viewBox="0 0 24 24">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                            修改密码
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <!-- 抽签结果卡片 -->
-    <div class="card animate-slideIn" style="margin-bottom: 1.5rem; border: none; animation-delay: 0.1s;">
-        <div class="card-header">
-            <h3 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <path d="M3 9h18"></path>
-                    <path d="M9 21V9"></path>
-                </svg>
-                我的抽签结果
-            </h3>
-        </div>
-        <div class="card-content" id="lotteryResults">
-            <!-- 抽签结果将通过JavaScript加载 -->
-        </div>
-    </div>
+        <!-- 抽签结果卡片 -->
+        <section class="dashboard-section" data-section="lottery-results">
+            <div class="section-card lottery-results-card">
+                <header class="section-header">
+                    <h2 class="section-title">
+                        <svg class="section-icon" viewBox="0 0 24 24">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <path d="M3 9h18"></path>
+                            <path d="M9 21V9"></path>
+                        </svg>
+                        我的抽签结果
+                    </h2>
+                </header>
+                <div class="section-content">
+                    <div id="lotteryResults" class="lottery-results-content">
+                        <div class="loading-skeleton">
+                            <div class="skeleton-card"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-    <!-- 宿舍选择卡片 -->
-    <div class="card animate-slideIn" style="border: none; animation-delay: 0.2s;">
-        <div class="card-header">
-            <h3 class="card-title" style="display: flex; align-items: center; gap: 0.5rem;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
-                我的宿舍选择
-            </h3>
-        </div>
-        <div class="card-content" id="roomSelection">
-            <!-- 宿舍选择将通过JavaScript加载 -->
-        </div>
-    </div>
+        <!-- 宿舍选择卡片 -->
+        <section class="dashboard-section" data-section="room-selection">
+            <div class="section-card room-selection-card">
+                <header class="section-header">
+                    <h2 class="section-title">
+                        <svg class="section-icon" viewBox="0 0 24 24">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        我的宿舍选择
+                    </h2>
+                </header>
+                <div class="section-content">
+                    <div id="roomSelection" class="room-selection-content">
+                        <div class="loading-skeleton">
+                            <div class="skeleton-card"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
 </div>
 
 <!-- 修改密码模态框 -->
-<div id="changePasswordModal" class="modal-overlay" style="display: none;">
-    <div class="modal">
-        <div class="modal-header">
-            <h3 class="modal-title">修改密码</h3>
-        </div>
+<div id="changePasswordModal" class="modal-overlay" style="display: none;" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+    <div class="modal" role="document">
+        <header class="modal-header">
+            <h3 id="modalTitle" class="modal-title">修改密码</h3>
+            <button type="button" class="modal-close" aria-label="关闭">
+                <svg viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </header>
         <div class="modal-content">
-            <form id="changePasswordForm">
+            <form id="changePasswordForm" novalidate>
                 <div class="form-group">
-                    <label class="form-label">当前密码</label>
-                    <input type="password" id="oldPassword" class="form-input" required>
+                    <label class="form-label" for="oldPassword">当前密码</label>
+                    <input type="password" id="oldPassword" class="form-input" required aria-describedby="oldPasswordError">
+                    <div id="oldPasswordError" class="form-error" role="alert"></div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">新密码</label>
-                    <input type="password" id="newPassword" class="form-input" required minlength="6">
+                    <label class="form-label" for="newPassword">新密码</label>
+                    <input type="password" id="newPassword" class="form-input" required minlength="6" aria-describedby="newPasswordError">
+                    <div id="newPasswordError" class="form-error" role="alert"></div>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">确认新密码</label>
-                    <input type="password" id="confirmPassword" class="form-input" required minlength="6">
+                    <label class="form-label" for="confirmPassword">确认新密码</label>
+                    <input type="password" id="confirmPassword" class="form-input" required minlength="6" aria-describedby="confirmPasswordError">
+                    <div id="confirmPasswordError" class="form-error" role="alert"></div>
                 </div>
             </form>
         </div>
-        <div class="modal-actions">
-            <button type="button" class="btn btn-outline" onclick="hideChangePasswordModal()">取消</button>
-            <button type="button" class="btn btn-primary" onclick="changePassword()">修改</button>
-        </div>
+        <footer class="modal-actions">
+            <button type="button" class="btn btn-outline" id="cancelPasswordBtn">取消</button>
+            <button type="button" class="btn btn-primary" id="confirmPasswordBtn">
+                <span class="btn-text">修改</span>
+                <span class="btn-loading" style="display: none;"></span>
+            </button>
+        </footer>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-let userData = null;
-let hasLotteryResult = false;
-
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Dashboard DOM loaded');
-    
-    // 检查API对象
-    if (typeof api === 'undefined') {
-        console.error('API object not found');
-        showAlert('系统初始化失败，请刷新页面重试', 'error');
-        return;
-    }
-    console.log('API object found');
-    
-    // 检查认证
-    if (!requireAuth()) {
-        console.log('Auth failed');
-        return;
-    }
-    console.log('Auth passed');
-    
-    console.log('Starting to load dashboard components');
-    loadUserInfo().then(() => {
-        return loadLotteryResults();
-    }).then(() => {
-        return loadRoomSelection();
-    }).catch(error => {
-        console.error('Error loading dashboard:', error);
-        showAlert('加载页面失败: ' + error.message, 'error');
-    });
-});
-
-async function loadUserInfo() {
-    console.log('Loading user info...');
-    try {
-        const response = await api.getProfile();
-        console.log('Profile response:', response);
-        userData = response.user;
+/**
+ * 个人中心仪表板管理器
+ * 使用模块化架构重构，提供更好的错误处理和用户体验
+ */
+class DashboardManager {
+    constructor() {
+        this.state = {
+            userData: null,
+            lotteryResults: null,
+            roomSelection: null,
+            isLoading: false,
+            errors: new Map()
+        };
         
-        document.getElementById('userInfo').innerHTML = `
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
-                <div class="stat-item" style="border-bottom: none; padding: 0;">
-                    <span class="stat-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;">
+        this.retryConfig = {
+            maxRetries: 3,
+            baseDelay: 1000,
+            maxDelay: 5000
+        };
+        
+        this.abortController = new AbortController();
+        this.initializeComponents();
+    }
+    
+    /**
+     * 初始化组件和事件监听器
+     */
+    initializeComponents() {
+        this.bindEvents();
+        this.initializeModal();
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initialize());
+        } else {
+            this.initialize();
+        }
+    }
+    
+    /**
+     * 绑定事件监听器
+     */
+    bindEvents() {
+        // 防止内存泄漏，确保事件监听器只绑定一次
+        document.addEventListener('click', this.handleGlobalClick.bind(this), { 
+            passive: true,
+            signal: this.abortController.signal 
+        });
+        
+        // 页面卸载时清理资源
+        window.addEventListener('beforeunload', () => this.cleanup(), { 
+            signal: this.abortController.signal 
+        });
+    }
+    
+    /**
+     * 全局点击事件处理
+     */
+    handleGlobalClick(event) {
+        const target = event.target.closest('button, [data-action]');
+        if (!target) return;
+        
+        const action = target.id || target.dataset.action;
+        
+        switch (action) {
+            case 'changePasswordBtn':
+                this.showPasswordModal();
+                break;
+            case 'confirmPasswordBtn':
+                this.handlePasswordChange(event);
+                break;
+            case 'cancelPasswordBtn':
+                this.hidePasswordModal();
+                break;
+        }
+    }
+    
+    /**
+     * 初始化模态框
+     */
+    initializeModal() {
+        const modal = document.getElementById('changePasswordModal');
+        if (!modal) return;
+        
+        // ESC键关闭模态框
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.style.display === 'flex') {
+                this.hidePasswordModal();
+            }
+        }, { signal: this.abortController.signal });
+        
+        // 点击背景关闭模态框
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.hidePasswordModal();
+            }
+        }, { signal: this.abortController.signal });
+        
+        // 关闭按钮
+        const closeBtn = modal.querySelector('.modal-close');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.hidePasswordModal(), {
+                signal: this.abortController.signal
+            });
+        }
+    }
+    
+    /**
+     * 主要初始化方法
+     */
+    async initialize() {
+        try {
+            // 检查API可用性
+            if (typeof api === 'undefined') {
+                throw new Error('API未初始化');
+            }
+            
+            // 检查认证状态
+            if (!requireAuth()) {
+                return;
+            }
+            
+            // 并发加载所有数据
+            await this.loadAllData();
+            
+        } catch (error) {
+            this.handleCriticalError('系统初始化失败', error);
+        }
+    }
+    
+    /**
+     * 并发加载所有数据
+     */
+    async loadAllData() {
+        this.setState({ isLoading: true });
+        
+        try {
+            // 使用Promise.allSettled确保部分失败不影响其他数据加载
+            const results = await Promise.allSettled([
+                this.loadUserInfo(),
+                this.loadLotteryResults(),
+                this.loadRoomSelection()
+            ]);
+            
+            // 检查是否有任何加载失败
+            const failures = results.filter(result => result.status === 'rejected');
+            if (failures.length > 0) {
+                console.warn('部分数据加载失败:', failures);
+            }
+            
+            // 加载状态概览（依赖于其他数据）
+            await this.loadStatusOverview();
+            
+        } catch (error) {
+            this.handleError('数据加载失败', error);
+        } finally {
+            this.setState({ isLoading: false });
+        }
+    }
+    
+    /**
+     * 加载用户信息
+     */
+    async loadUserInfo() {
+        return this.withRetry(async () => {
+            const container = document.getElementById('userInfo');
+            this.showLoading(container);
+            
+            try {
+                const response = await api.getProfile();
+                const userData = response.user;
+                
+                this.setState({ userData });
+                this.renderUserInfo(userData, container);
+                
+            } catch (error) {
+                this.showError(container, '用户信息加载失败');
+                throw error;
+            }
+        }, 'userInfo');
+    }
+    
+    /**
+     * 渲染用户信息
+     */
+    renderUserInfo(userData, container) {
+        const userInfoHTML = `
+            <div class="user-info-grid">
+                <div class="info-item">
+                    <div class="info-label">
+                        <svg class="info-icon" viewBox="0 0 24 24">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
                         </svg>
                         姓名
-                    </span>
-                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600; color: var(--primary-color);">${userData.name}</span>
+                    </div>
+                    <div class="info-value primary">${this.escapeHtml(userData.name)}</div>
                 </div>
-                <div class="stat-item" style="border-bottom: none; padding: 0;">
-                    <span class="stat-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;">
+                <div class="info-item">
+                    <div class="info-label">
+                        <svg class="info-icon" viewBox="0 0 24 24">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                             <circle cx="9" cy="9" r="2"></circle>
                             <path d="M21 15.5c-.3-2.4-2.5-4.5-5-4.5s-4.7 2.1-5 4.5"></path>
                         </svg>
                         用户名
-                    </span>
-                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600; color: var(--secondary-color);">${userData.username}</span>
+                    </div>
+                    <div class="info-value secondary">${this.escapeHtml(userData.username)}</div>
                 </div>
-                <div class="stat-item" style="border-bottom: none; padding: 0;">
-                    <span class="stat-label">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;">
+                <div class="info-item">
+                    <div class="info-label">
+                        <svg class="info-icon" viewBox="0 0 24 24">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="16" y1="2" x2="16" y2="6"></line>
                             <line x1="8" y1="2" x2="8" y2="6"></line>
                             <line x1="3" y1="10" x2="21" y2="10"></line>
                         </svg>
                         注册时间
-                    </span>
-                    <span class="stat-value" style="font-size: 1.125rem; font-weight: 600;">${formatDate(userData.created_at)}</span>
+                    </div>
+                    <div class="info-value">${formatDate(userData.created_at)}</div>
                 </div>
             </div>
         `;
         
-        // 加载状态概览
-        loadStatusOverview();
-        console.log('User info loaded successfully');
-    } catch (error) {
-        console.error('Error loading user info:', error);
-        showAlert(error.message, 'error');
+        container.innerHTML = userInfoHTML;
     }
-}
-
-async function loadLotteryResults() {
-    console.log('Loading lottery results...');
-    try {
-        const response = await api.getLotteryResults();
-        console.log('Lottery response:', response);
-        const container = document.getElementById('lotteryResults');
-        
-        if (response.results.length === 0) {
-            // 检查是否已经点击过抽签
+    
+    /**
+     * 加载抽签结果
+     */
+    async loadLotteryResults() {
+        return this.withRetry(async () => {
+            const container = document.getElementById('lotteryResults');
+            this.showLoading(container);
+            
+            try {
+                const response = await api.getLotteryResults();
+                const results = response.results || [];
+                
+                this.setState({ lotteryResults: results });
+                this.renderLotteryResults(results, container);
+                
+            } catch (error) {
+                this.showError(container, '抽签结果加载失败');
+                throw error;
+            }
+        }, 'lotteryResults');
+    }
+    
+    /**
+     * 渲染抽签结果
+     */
+    renderLotteryResults(results, container) {
+        if (results.length === 0) {
             const hasClicked = localStorage.getItem('lottery_clicked');
+            
             if (hasClicked) {
                 container.innerHTML = `
                     <div class="alert alert-info">
+                        <svg class="alert-icon" viewBox="0 0 24 24">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
                         <p>您已参与抽签，请等待管理员公布抽签结果。</p>
                     </div>
                 `;
             } else {
-                container.innerHTML = `
-                    <div style="text-align: center; padding: 3rem 2rem; background: linear-gradient(135deg, var(--primary-bg), var(--secondary-bg)); border-radius: var(--radius-lg); border: 1px solid var(--primary-light);">
-                        <div style="margin-bottom: 1.5rem;">
-                            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <path d="M3 9h18"></path>
-                                <path d="M9 21V9"></path>
-                            </svg>
-                        </div>
-                        <h3 style="color: var(--primary-dark); margin-bottom: 0.5rem; font-size: 1.5rem;">宿舍抽签</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 1rem; max-width: 400px; margin-left: auto; margin-right: auto;">欢迎参与宿舍抽签！系统将为您随机分配抽签号码，根据号码顺序选择心仪的宿舍</p>
-                        <button type="button" class="btn btn-primary" onclick="participateLottery()" style="font-size: 1.125rem; padding: 1rem 2.5rem; box-shadow: var(--shadow-lg); border-radius: var(--radius-lg);">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polygon points="10 8 16 12 10 16"></polygon>
-                            </svg>
-                            开始抽签
-                        </button>
-                        <div style="margin-top: 1.5rem; font-size: 0.875rem; color: var(--text-muted);">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem;">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <line x1="12" y1="6" x2="12" y2="10"></line>
-                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                            </svg>
-                            抽签结果将由管理员统一发布
-                        </div>
-                    </div>
-                `;
+                container.innerHTML = this.renderLotteryPrompt();
             }
-            hasLotteryResult = false;
             return;
         }
         
-        hasLotteryResult = true;
-        
-        const resultsHtml = response.results.map(result => `
-            <div class="stat-card" style="margin-bottom: 1rem; padding: 1.5rem;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1rem;">
-                    <div>
-                        <div class="stat-label">抽签号码</div>
-                        <div class="stat-value" style="font-size: 1.5rem; color: var(--primary-color);">#${result.lottery_number}</div>
+        const resultsHTML = results.map(result => this.renderLotteryResult(result)).join('');
+        container.innerHTML = resultsHTML;
+    }
+    
+    /**
+     * 渲染抽签提示
+     */
+    renderLotteryPrompt() {
+        return `
+            <div class="lottery-prompt">
+                <div class="prompt-icon">
+                    <svg viewBox="0 0 24 24">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <path d="M3 9h18"></path>
+                        <path d="M9 21V9"></path>
+                    </svg>
+                </div>
+                <h3 class="prompt-title">宿舍抽签</h3>
+                <p class="prompt-description">欢迎参与宿舍抽签！系统将为您随机分配抽签号码，根据号码顺序选择心仪的宿舍</p>
+                <button type="button" class="btn btn-primary lottery-btn" data-action="participate-lottery">
+                    <svg class="btn-icon" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polygon points="10 8 16 12 10 16"></polygon>
+                    </svg>
+                    <span class="btn-text">开始抽签</span>
+                    <span class="btn-loading" style="display: none;"></span>
+                </button>
+                <div class="prompt-note">
+                    <svg class="note-icon" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="6" x2="12" y2="10"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    抽签结果将由管理员统一发布
+                </div>
+            </div>
+        `;
+    }
+    
+    /**
+     * 渲染单个抽签结果
+     */
+    renderLotteryResult(result) {
+        return `
+            <div class="result-card">
+                <div class="result-grid">
+                    <div class="result-item">
+                        <div class="result-label">抽签号码</div>
+                        <div class="result-value primary">#${result.lottery_number}</div>
                     </div>
-                    <div>
-                        <div class="stat-label">分配房间类型</div>
-                        <div class="stat-value" style="font-size: 1.5rem;">${result.room_type ? `${result.room_type}人间` : '未分配'}</div>
+                    <div class="result-item">
+                        <div class="result-label">分配房间类型</div>
+                        <div class="result-value">${result.room_type ? `${result.room_type}人间` : '未分配'}</div>
                     </div>
-                    <div>
-                        <div class="stat-label">抽签时间</div>
-                        <div style="font-weight: 600; margin-top: 0.25rem;">${formatDate(result.created_at)}</div>
+                    <div class="result-item">
+                        <div class="result-label">抽签时间</div>
+                        <div class="result-value">${formatDate(result.created_at)}</div>
                     </div>
                 </div>
                 ${result.room_type ? `
-                    <div class="alert alert-info" style="margin-bottom: 0;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <div class="alert alert-info">
+                        <svg class="alert-icon" viewBox="0 0 24 24">
                             <circle cx="12" cy="12" r="10"></circle>
                             <line x1="12" y1="16" x2="12" y2="12"></line>
                             <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -270,268 +489,479 @@ async function loadLotteryResults() {
                     </div>
                 ` : ''}
             </div>
-        `).join('');
-        
-        container.innerHTML = resultsHtml;
-        console.log('Lottery results loaded successfully');
-    } catch (error) {
-        console.error('Error loading lottery results:', error);
-        document.getElementById('lotteryResults').innerHTML = '<p>加载抽签结果失败</p>';
+        `;
     }
-}
-
-async function participateLottery() {
-    const button = event.target;
-    const originalText = button.innerHTML;
     
-    // 显示加载状态
-    button.innerHTML = '<span class="loading" style="border-color: rgba(255,255,255,0.3); border-top-color: white;"></span> 抽签中...';
-    button.disabled = true;
-    
-    try {
-        // 添加一些延迟和动效，让用户感觉是在抽签
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // 标记用户已参与抽签
-        localStorage.setItem('lottery_clicked', 'true');
-        
-        // 显示成功信息
-        showAlert('🎉 抽签成功！您已参与宿舍抽签，请等待管理员公布结果', 'success');
-        
-        // 刷新抽签结果区域
-        loadLotteryResults();
-        
-    } catch (error) {
-        showAlert('抽签失败，请重试', 'error');
-        button.innerHTML = originalText;
-        button.disabled = false;
+    /**
+     * 加载宿舍选择信息
+     */
+    async loadRoomSelection() {
+        return this.withRetry(async () => {
+            const container = document.getElementById('roomSelection');
+            this.showLoading(container);
+            
+            try {
+                const response = await api.getMySelection();
+                const selection = response.selection;
+                
+                this.setState({ roomSelection: selection });
+                this.renderRoomSelection(selection, container);
+                
+            } catch (error) {
+                this.showError(container, '宿舍选择信息加载失败');
+                throw error;
+            }
+        }, 'roomSelection');
     }
-}
-
-async function loadRoomSelection() {
-    console.log('Loading room selection...');
-    try {
-        const response = await api.getMySelection();
-        console.log('Room selection response:', response);
-        const container = document.getElementById('roomSelection');
-        
-        if (!response.selection) {
+    
+    /**
+     * 渲染宿舍选择
+     */
+    renderRoomSelection(selection, container) {
+        if (!selection) {
+            const hasLotteryResult = this.state.lotteryResults && this.state.lotteryResults.length > 0;
+            
             if (!hasLotteryResult) {
                 container.innerHTML = `
                     <div class="alert alert-warning">
+                        <svg class="alert-icon" viewBox="0 0 24 24">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
                         <p>您还没有抽签结果，无法选择宿舍。请等待管理员进行抽签分配。</p>
                     </div>
                 `;
             } else {
                 container.innerHTML = `
-                    <p>您还没有选择宿舍</p>
-                    <a href="/room-selection" class="btn btn-primary" id="selectRoomBtn">立即选择宿舍</a>
-                    `;
-                }
+                    <div class="no-selection">
+                        <p>您还没有选择宿舍</p>
+                        <a href="/room-selection" class="btn btn-primary">立即选择宿舍</a>
+                    </div>
+                `;
             }
             return;
         }
         
-        const selection = response.selection;
-        container.innerHTML = `
-            <div class="stat-card" style="padding: 1.5rem; margin-bottom: 1rem;">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem;">
-                    <div>
-                        <div class="stat-label">楼栋</div>
-                        <div class="stat-value" style="font-size: 1.25rem;">${selection.building_name}</div>
+        container.innerHTML = this.renderSelectionDetails(selection);
+    }
+    
+    /**
+     * 渲染选择详情
+     */
+    renderSelectionDetails(selection) {
+        return `
+            <div class="selection-card">
+                <div class="selection-grid">
+                    <div class="selection-item">
+                        <div class="selection-label">楼栋</div>
+                        <div class="selection-value">${this.escapeHtml(selection.building_name)}</div>
                     </div>
-                    <div>
-                        <div class="stat-label">房间号</div>
-                        <div class="stat-value" style="font-size: 1.25rem;">${selection.room_number}</div>
+                    <div class="selection-item">
+                        <div class="selection-label">房间号</div>
+                        <div class="selection-value">${this.escapeHtml(selection.room_number)}</div>
                     </div>
-                    <div>
-                        <div class="stat-label">床位号</div>
-                        <div class="stat-value" style="font-size: 1.25rem;">${selection.bed_number}</div>
+                    <div class="selection-item">
+                        <div class="selection-label">床位号</div>
+                        <div class="selection-value">${this.escapeHtml(selection.bed_number)}</div>
                     </div>
-                    <div>
-                        <div class="stat-label">选择时间</div>
-                        <div style="font-weight: 600; margin-top: 0.25rem;">${formatDate(selection.selected_at)}</div>
+                    <div class="selection-item">
+                        <div class="selection-label">选择时间</div>
+                        <div class="selection-value">${formatDate(selection.selected_at)}</div>
                     </div>
-                    <div>
-                        <div class="stat-label">确认状态</div>
-                        <div style="margin-top: 0.25rem;">
-                            ${selection.is_confirmed ? 
-                                '<span class="badge badge-success">已确认</span>' : 
-                                '<span class="badge badge-error">未确认</span>'
-                            }
+                    <div class="selection-item">
+                        <div class="selection-label">确认状态</div>
+                        <div class="selection-value">
+                            <span class="badge ${selection.is_confirmed ? 'badge-success' : 'badge-warning'}">
+                                ${selection.is_confirmed ? '已确认' : '未确认'}
+                            </span>
                         </div>
                     </div>
                 </div>
+                ${this.renderSelectionActions(selection)}
             </div>
-            ${!selection.is_confirmed ? `
-                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <a href="/room-selection" class="btn btn-outline">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                        </svg>
-                        修改选择
-                    </a>
-                    <button type="button" class="btn btn-success" onclick="confirmSelection()">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                        确认选择
-                    </button>
-                </div>
-            ` : '<div class="alert alert-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>您的宿舍选择已确认</div>'}
         `;
-        console.log('Room selection loaded successfully');
-    } catch (error) {
-        console.error('Error loading room selection:', error);
-        document.getElementById('roomSelection').innerHTML = '<p>加载宿舍选择失败</p>';
-    }
-}
-
-async function confirmSelection() {
-    try {
-        await api.confirmSelection();
-        showAlert('选择确认成功', 'success');
-        loadRoomSelection();
-    } catch (error) {
-        showAlert(error.message, 'error');
-    }
-}
-
-function showChangePasswordModal() {
-    document.getElementById('changePasswordModal').style.display = 'flex';
-}
-
-function hideChangePasswordModal() {
-    document.getElementById('changePasswordModal').style.display = 'none';
-    document.getElementById('changePasswordForm').reset();
-}
-
-async function changePassword() {
-    const oldPassword = document.getElementById('oldPassword').value;
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-    
-    if (newPassword !== confirmPassword) {
-        showAlert('新密码和确认密码不匹配', 'error');
-        return;
     }
     
-    if (newPassword.length < 6) {
-        showAlert('新密码长度不能少于6位', 'error');
-        return;
-    }
-    
-    try {
-        await api.changePassword(oldPassword, newPassword);
-        showAlert('密码修改成功', 'success');
-        hideChangePasswordModal();
-    } catch (error) {
-        showAlert(error.message, 'error');
-    }
-}
-
-// 点击模态框外部关闭
-document.getElementById('changePasswordModal').addEventListener('click', function(e) {
-    if (e.target === this) {
-        hideChangePasswordModal();
-    }
-});
-
-async function loadStatusOverview() {
-    try {
-        // 获取抽签结果状态
-        let lotteryStatus = '未参与';
-        let lotteryColor = 'var(--gray-400)';
-        let lotteryIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<circle cx="12" cy="12" r="10"></circle>' +
-            '<line x1="12" y1="6" x2="12" y2="10"></line>' +
-            '<line x1="12" y1="16" x2="12.01" y2="16"></line>' +
-        '</svg>';
+    /**
+     * 渲染选择操作按钮
+     */
+    renderSelectionActions(selection) {
+        if (selection.is_confirmed) {
+            return `
+                <div class="alert alert-success">
+                    <svg class="alert-icon" viewBox="0 0 24 24">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                    您的宿舍选择已确认
+                </div>
+            `;
+        }
         
-        // 获取宿舍选择状态
-        let roomStatus = '未选择';
-        let roomColor = 'var(--gray-400)';
-        let roomIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>' +
-            '<polyline points="9 22 9 12 15 12 15 22"></polyline>' +
-        '</svg>';
+        return `
+            <div class="selection-actions">
+                <a href="/room-selection" class="btn btn-outline">
+                    <svg class="btn-icon" viewBox="0 0 24 24">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    修改选择
+                </a>
+                <button type="button" class="btn btn-success" data-action="confirm-selection">
+                    <svg class="btn-icon" viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <span class="btn-text">确认选择</span>
+                    <span class="btn-loading" style="display: none;"></span>
+                </button>
+            </div>
+        `;
+    }
+    
+    /**
+     * 加载状态概览
+     */
+    async loadStatusOverview() {
+        try {
+            const container = document.getElementById('statusOverview');
+            const statusData = this.calculateStatusData();
+            
+            container.innerHTML = this.renderStatusOverview(statusData);
+            
+        } catch (error) {
+            console.error('状态概览加载失败:', error);
+            this.showError(document.getElementById('statusOverview'), '状态加载失败');
+        }
+    }
+    
+    /**
+     * 计算状态数据
+     */
+    calculateStatusData() {
+        const { lotteryResults, roomSelection } = this.state;
         
-        // 检查抽签结果
-        const lotteryResponse = await api.getLotteryResults();
-        if (lotteryResponse.results && lotteryResponse.results.length > 0) {
-            const result = lotteryResponse.results[0];
+        // 抽签状态
+        let lotteryStatus = { text: '未参与', color: 'var(--gray-400)', icon: 'help-circle' };
+        
+        if (lotteryResults && lotteryResults.length > 0) {
+            const result = lotteryResults[0];
             if (result.room_type) {
-                lotteryStatus = `已分配 ${result.room_type}人间`;
-                lotteryColor = 'var(--success-color)';
-                lotteryIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-                    '<polyline points="20 6 9 17 4 12"></polyline>' +
-                '</svg>';
+                lotteryStatus = {
+                    text: `已分配 ${result.room_type}人间`,
+                    color: 'var(--success-color)',
+                    icon: 'check-circle'
+                };
             } else {
-                lotteryStatus = '已参与抽签';
-                lotteryColor = 'var(--warning-color)';
-                lotteryIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-                    '<circle cx="12" cy="12" r="10"></circle>' +
-                    '<path d="M12 6v6l4 2"></path>' +
-                '</svg>';
+                lotteryStatus = {
+                    text: '已参与抽签',
+                    color: 'var(--warning-color)',
+                    icon: 'clock'
+                };
             }
         }
         
-        // 检查宿舍选择
-        const selectionResponse = await api.getMySelection();
-        if (selectionResponse.selection) {
-            const selection = selectionResponse.selection;
-            if (selection.is_confirmed) {
-                roomStatus = `${selection.building_name} ${selection.room_number}-${selection.bed_number}`;
-                roomColor = 'var(--success-color)';
-                roomIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-                    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>' +
-                    '<polyline points="22 4 12 14.01 9 11.01"></polyline>' +
-                '</svg>';
+        // 宿舍状态
+        let roomStatus = { text: '未选择', color: 'var(--gray-400)', icon: 'home' };
+        
+        if (roomSelection) {
+            if (roomSelection.is_confirmed) {
+                roomStatus = {
+                    text: `${roomSelection.building_name} ${roomSelection.room_number}-${roomSelection.bed_number}`,
+                    color: 'var(--success-color)',
+                    icon: 'check-circle'
+                };
             } else {
-                roomStatus = '已选择待确认';
-                roomColor = 'var(--warning-color)';
-                roomIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-                    '<circle cx="12" cy="12" r="10"></circle>' +
-                    '<path d="M12 8v4l2 2"></path>' +
-                '</svg>';
+                roomStatus = {
+                    text: '已选择待确认',
+                    color: 'var(--warning-color)',
+                    icon: 'clock'
+                };
             }
         }
         
-        document.getElementById('statusOverview').innerHTML = 
-            '<div class="stat-card" style="text-align: center;">' +
-                '<div style="color: ' + lotteryColor + '; margin-bottom: 0.5rem;">' +
-                    lotteryIcon +
-                '</div>' +
-                '<div class="stat-label">抽签状态</div>' +
-                '<div class="stat-value" style="color: ' + lotteryColor + ';">' + lotteryStatus + '</div>' +
-            '</div>' +
-            '<div class="stat-card" style="text-align: center;">' +
-                '<div style="color: ' + roomColor + '; margin-bottom: 0.5rem;">' +
-                    roomIcon +
-                '</div>' +
-                '<div class="stat-label">宿舍状态</div>' +
-                '<div class="stat-value" style="color: ' + roomColor + ';">' + roomStatus + '</div>' +
-            '</div>' +
-            '<div class="stat-card" style="text-align: center;">' +
-                '<div style="color: var(--info-color); margin-bottom: 0.5rem;">' +
-                    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-                        '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>' +
-                        '<circle cx="12" cy="7" r="4"></circle>' +
-                    '</svg>' +
-                '</div>' +
-                '<div class="stat-label">账户类型</div>' +
-                '<div class="stat-value" style="color: var(--info-color);">学生用户</div>' +
-            '</div>';
-    } catch (error) {
-        console.error('加载状态概览失败:', error);
-        document.getElementById('statusOverview').innerHTML = 
-            '<div class="stat-card" style="text-align: center;">' +
-                '<div class="stat-label">状态加载失败</div>' +
-                '<div class="stat-value">请刷新页面重试</div>' +
-            '</div>';
+        return { lotteryStatus, roomStatus };
+    }
+    
+    /**
+     * 渲染状态概览
+     */
+    renderStatusOverview(statusData) {
+        const { lotteryStatus, roomStatus } = statusData;
+        
+        return `
+            <div class="status-card">
+                <div class="status-icon" style="color: ${lotteryStatus.color};">
+                    ${this.getIcon(lotteryStatus.icon)}
+                </div>
+                <div class="status-label">抽签状态</div>
+                <div class="status-value" style="color: ${lotteryStatus.color};">${lotteryStatus.text}</div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon" style="color: ${roomStatus.color};">
+                    ${this.getIcon(roomStatus.icon)}
+                </div>
+                <div class="status-label">宿舍状态</div>
+                <div class="status-value" style="color: ${roomStatus.color};">${roomStatus.text}</div>
+            </div>
+            <div class="status-card">
+                <div class="status-icon" style="color: var(--info-color);">
+                    ${this.getIcon('user')}
+                </div>
+                <div class="status-label">账户类型</div>
+                <div class="status-value" style="color: var(--info-color);">学生用户</div>
+            </div>
+        `;
+    }
+    
+    /**
+     * 获取SVG图标
+     */
+    getIcon(iconName) {
+        const icons = {
+            'help-circle': '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="10"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+            'check-circle': '<svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>',
+            'clock': '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>',
+            'home': '<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
+            'user': '<svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>'
+        };
+        
+        return icons[iconName] || icons['help-circle'];
+    }
+    
+    /**
+     * 密码相关方法
+     */
+    showPasswordModal() {
+        const modal = document.getElementById('changePasswordModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.querySelector('#oldPassword')?.focus();
+        }
+    }
+    
+    hidePasswordModal() {
+        const modal = document.getElementById('changePasswordModal');
+        if (modal) {
+            modal.style.display = 'none';
+            this.clearFormErrors('changePasswordForm');
+            document.getElementById('changePasswordForm')?.reset();
+        }
+    }
+    
+    async handlePasswordChange(event) {
+        event.preventDefault();
+        
+        const button = event.target;
+        const form = document.getElementById('changePasswordForm');
+        
+        if (!this.validatePasswordForm(form)) {
+            return;
+        }
+        
+        const formData = new FormData(form);
+        const oldPassword = document.getElementById('oldPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        
+        this.setButtonLoading(button, true);
+        
+        try {
+            await api.changePassword(oldPassword, newPassword);
+            showAlert('密码修改成功', 'success');
+            this.hidePasswordModal();
+            
+        } catch (error) {
+            this.showFormError('changePasswordForm', error.message);
+        } finally {
+            this.setButtonLoading(button, false);
+        }
+    }
+    
+    validatePasswordForm(form) {
+        this.clearFormErrors('changePasswordForm');
+        
+        const oldPassword = form.querySelector('#oldPassword').value;
+        const newPassword = form.querySelector('#newPassword').value;
+        const confirmPassword = form.querySelector('#confirmPassword').value;
+        
+        let isValid = true;
+        
+        if (!oldPassword) {
+            this.showFieldError('oldPassword', '请输入当前密码');
+            isValid = false;
+        }
+        
+        if (!newPassword || newPassword.length < 6) {
+            this.showFieldError('newPassword', '新密码长度不能少于6位');
+            isValid = false;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            this.showFieldError('confirmPassword', '新密码和确认密码不匹配');
+            isValid = false;
+        }
+        
+        return isValid;
+    }
+    
+    /**
+     * 工具方法
+     */
+    setState(newState) {
+        Object.assign(this.state, newState);
+    }
+    
+    showLoading(container) {
+        if (container) {
+            container.innerHTML = `
+                <div class="loading-skeleton">
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                    <div class="skeleton-text"></div>
+                </div>
+            `;
+        }
+    }
+    
+    showError(container, message) {
+        if (container) {
+            container.innerHTML = `
+                <div class="error-state">
+                    <svg class="error-icon" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    <p class="error-message">${message}</p>
+                    <button type="button" class="btn btn-outline retry-btn" data-action="retry">重试</button>
+                </div>
+            `;
+        }
+    }
+    
+    setButtonLoading(button, isLoading) {
+        const text = button.querySelector('.btn-text');
+        const loading = button.querySelector('.btn-loading');
+        
+        if (text && loading) {
+            text.style.display = isLoading ? 'none' : 'inline';
+            loading.style.display = isLoading ? 'inline' : 'none';
+        }
+        
+        button.disabled = isLoading;
+    }
+    
+    showFieldError(fieldId, message) {
+        const field = document.getElementById(fieldId);
+        const errorElement = document.getElementById(fieldId + 'Error');
+        
+        if (field) {
+            field.classList.add('error');
+        }
+        
+        if (errorElement) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+    }
+    
+    clearFormErrors(formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        
+        form.querySelectorAll('.form-input').forEach(input => {
+            input.classList.remove('error');
+        });
+        
+        form.querySelectorAll('.form-error').forEach(error => {
+            error.textContent = '';
+            error.style.display = 'none';
+        });
+    }
+    
+    showFormError(formId, message) {
+        const form = document.getElementById(formId);
+        if (form) {
+            const errorContainer = form.querySelector('.form-error') || 
+                                  form.appendChild(document.createElement('div'));
+            errorContainer.className = 'form-error';
+            errorContainer.textContent = message;
+            errorContainer.style.display = 'block';
+        }
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    async withRetry(fn, context = 'operation') {
+        let lastError;
+        
+        for (let attempt = 1; attempt <= this.retryConfig.maxRetries; attempt++) {
+            try {
+                return await fn();
+            } catch (error) {
+                lastError = error;
+                
+                if (attempt === this.retryConfig.maxRetries) {
+                    throw error;
+                }
+                
+                const delay = Math.min(
+                    this.retryConfig.baseDelay * Math.pow(2, attempt - 1),
+                    this.retryConfig.maxDelay
+                );
+                
+                console.warn(`${context} 尝试 ${attempt} 失败，${delay}ms后重试:`, error.message);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        
+        throw lastError;
+    }
+    
+    handleError(message, error) {
+        console.error(message, error);
+        showAlert(`${message}: ${error.message}`, 'error');
+    }
+    
+    handleCriticalError(message, error) {
+        console.error(message, error);
+        showAlert(message, 'error');
+        
+        // 显示页面级错误状态
+        const main = document.querySelector('.dashboard-main');
+        if (main) {
+            main.innerHTML = `
+                <div class="critical-error">
+                    <h2>系统暂时不可用</h2>
+                    <p>${message}</p>
+                    <button type="button" class="btn btn-primary" onclick="location.reload()">刷新页面</button>
+                </div>
+            `;
+        }
+    }
+    
+    cleanup() {
+        this.abortController.abort();
     }
 }
+
+// 初始化仪表板管理器
+let dashboardManager;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        dashboardManager = new DashboardManager();
+    });
+} else {
+    dashboardManager = new DashboardManager();
+}
+
+// 导出全局方法以保持兼容性
+window.dashboardManager = dashboardManager;
 </script>
 
 {% endblock %}
