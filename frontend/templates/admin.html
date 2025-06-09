@@ -992,7 +992,7 @@ async function loadRoomTypeAllocations() {
                             <td>${formatDate(allocation.allocated_at)}</td>
                             <td>${allocation.allocator_name || '系统'}</td>
                             <td>
-                                <button class="btn btn-outline btn-sm" style="margin-right: 8px;" onclick="editRoomTypeAllocation(${allocation.id}, '${allocation.room_type}', '${allocation.notes || ''}')">编辑</button>
+                                <button class="btn btn-outline btn-sm" style="margin-right: 8px;" onclick="editRoomTypeAllocation(${allocation.id}, '${allocation.room_type}', '${allocation.notes || \'\'}')">编辑</button>
                                 <button class="btn btn-error btn-sm" onclick="deleteRoomTypeAllocation(${allocation.id})">删除</button>
                             </td>
                         </tr>
@@ -1783,7 +1783,7 @@ async function loadLotteryResults() {
                                             <td>${result.room_type ? `${result.room_type}人间` : '未分配'}</td>
                                             ${setting && !setting.is_published ? `
                                                 <td>
-                                                    <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.room_type || ''}')">编辑</button>
+                                                    <button class="btn btn-outline btn-sm" onclick="editLotteryResultInModal(${result.id}, ${result.lottery_number}, '${result.room_type || \'\'}')">编辑</button>
                                                 </td>
                                             ` : ''}
                                         </tr>
