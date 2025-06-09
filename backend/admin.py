@@ -390,6 +390,32 @@ def create_building():
     except Exception as e:
         return jsonify({'error': '创建失败'}), 500
 
+@admin_bp.route('/buildings/<int:building_id>', methods=['DELETE'])
+@admin_required
+def delete_building(building_id):
+    try:
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            
+            # Check if building exists
+            c.execute('SELECT * FROM buildings WHERE id = ?', (building_id,))
+            building = c.fetchone()
+            if not building:
+                return jsonify({'error': '建筑不存在'}), 404
+            
+            # Check if there are any rooms in this building
+            c.execute('SELECT COUNT(*) as room_count FROM rooms WHERE building_id = ?', (building_id,))
+            room_count = c.fetchone()['room_count']
+            if room_count > 0:
+                return jsonify({'error': f'无法删除建筑，该建筑下还有 {room_count} 个房间，请先删除所有房间'}), 400
+            
+            # Delete the building
+            c.execute('DELETE FROM buildings WHERE id = ?', (building_id,))
+        
+        return jsonify({'message': '建筑删除成功'}), 200
+    except Exception as e:
+        return jsonify({'error': f'删除失败: {str(e)}'}), 500
+
 @admin_bp.route('/buildings/<int:building_id>/rooms', methods=['GET'])
 @admin_required
 def get_building_rooms(building_id):
@@ -628,19 +654,45 @@ def delete_room(room_id):
             if occupied_count > 0:
                 return jsonify({'error': f'无法删除房间，有 {occupied_count} 个床位已被学生选择'}), 400
             
-            # Check if there are any room selections for this room
+            # Check if there are any current room selections for this room
             c.execute('SELECT COUNT(*) as selections FROM room_selections WHERE room_id = ?', (room_id,))
             selection_count = c.fetchone()['selections']
             if selection_count > 0:
                 return jsonify({'error': '无法删除房间，存在相关的房间选择记录'}), 400
             
-            # Delete beds first (foreign key constraint)
+            # Get counts for informational purposes
+            c.execute('SELECT COUNT(*) as history_count FROM allocation_history WHERE room_id = ?', (room_id,))
+            history_count = c.fetchone()['history_count']
+            
+            c.execute('SELECT COUNT(*) as bed_history_count FROM allocation_history WHERE bed_id IN (SELECT id FROM beds WHERE room_id = ?)', (room_id,))
+            bed_history_count = c.fetchone()['bed_history_count']
+            
+            # Delete all related records in the correct order to avoid foreign key constraint errors
+            
+            # 1. Delete allocation history for beds in this room
+            if bed_history_count > 0:
+                c.execute('DELETE FROM allocation_history WHERE bed_id IN (SELECT id FROM beds WHERE room_id = ?)', (room_id,))
+            
+            # 2. Delete allocation history for this room directly
+            if history_count > 0:
+                c.execute('DELETE FROM allocation_history WHERE room_id = ?', (room_id,))
+            
+            # 3. Delete any remaining room selections for this room (should be 0 based on check above)
+            c.execute('DELETE FROM room_selections WHERE room_id = ?', (room_id,))
+            
+            # 4. Delete beds (this will also clean up any remaining bed references)
             c.execute('DELETE FROM beds WHERE room_id = ?', (room_id,))
             
-            # Delete room
+            # 5. Finally delete the room
             c.execute('DELETE FROM rooms WHERE id = ?', (room_id,))
+            
+            # Prepare success message
+            message = '房间删除成功'
+            if history_count > 0 or bed_history_count > 0:
+                total_history = history_count + bed_history_count
+                message += f'，同时清理了 {total_history} 条相关历史记录'
         
-        return jsonify({'message': '房间删除成功'}), 200
+        return jsonify({'message': message}), 200
     except Exception as e:
         return jsonify({'error': f'删除失败: {str(e)}'}), 500
 
