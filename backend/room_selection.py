@@ -39,6 +39,11 @@ memory_lock = MemoryLock()
 @jwt_required()
 def select_room():
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     user = db.get_user_by_id(current_user_id)
     
     if not user:
@@ -157,6 +162,11 @@ def select_room():
 @jwt_required()
 def cancel_selection():
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     user = db.get_user_by_id(current_user_id)
     
     if not user:
@@ -195,6 +205,11 @@ def cancel_selection():
 @jwt_required()
 def confirm_selection():
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     user = db.get_user_by_id(current_user_id)
     
     if not user:
@@ -238,6 +253,11 @@ def confirm_selection():
 @jwt_required()
 def change_selection():
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     user = db.get_user_by_id(current_user_id)
     
     if not user:
@@ -365,6 +385,11 @@ def change_selection():
 @jwt_required()
 def get_selection_statistics():
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     user = db.get_user_by_id(current_user_id)
     
     if not user or not user['is_admin']:

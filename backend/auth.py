@@ -16,7 +16,13 @@ def admin_required(f):
             if not current_user_id:
                 return jsonify({'error': 'Token无效或已过期'}), 401
             
-            user = db.get_user_by_id(current_user_id)
+            # 将字符串ID转换为整数
+            try:
+                user_id = int(current_user_id)
+            except (ValueError, TypeError):
+                return jsonify({'error': 'Token格式错误'}), 401
+            
+            user = db.get_user_by_id(user_id)
             
             if not user:
                 return jsonify({'error': '用户不存在'}), 403
@@ -51,7 +57,8 @@ def login():
     if not user or not db.check_password(user, password):
         return jsonify({'error': '用户名或密码错误'}), 401
     
-    access_token = create_access_token(identity=user['id'])
+    # JWT identity必须是字符串
+    access_token = create_access_token(identity=str(user['id']))
     
     return jsonify({
         'message': '登录成功',
@@ -92,7 +99,13 @@ def register():
 @jwt_required()
 def get_profile():
     current_user_id = get_jwt_identity()
-    user = db.get_user_by_id(current_user_id)
+    # 将字符串ID转换为整数
+    try:
+        user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
+    
+    user = db.get_user_by_id(user_id)
     
     if not user:
         return jsonify({'error': '用户不存在'}), 404
@@ -111,7 +124,13 @@ def get_profile():
 @jwt_required()
 def change_password():
     current_user_id = get_jwt_identity()
-    user = db.get_user_by_id(current_user_id)
+    # 将字符串ID转换为整数
+    try:
+        user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
+    
+    user = db.get_user_by_id(user_id)
     
     if not user:
         return jsonify({'error': '用户不存在'}), 404
@@ -136,7 +155,7 @@ def change_password():
         
         with db.get_db_connection() as conn:
             c = conn.cursor()
-            c.execute('UPDATE users SET password_hash = ? WHERE id = ?', (password_hash, current_user_id))
+            c.execute('UPDATE users SET password_hash = ? WHERE id = ?', (password_hash, user_id))
         
         return jsonify({'message': '密码修改成功'}), 200
     except Exception as e:
@@ -146,7 +165,13 @@ def change_password():
 @jwt_required()
 def verify_token():
     current_user_id = get_jwt_identity()
-    user = db.get_user_by_id(current_user_id)
+    # 将字符串ID转换为整数
+    try:
+        user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
+    
+    user = db.get_user_by_id(user_id)
     
     if not user:
         return jsonify({'error': '用户不存在'}), 404

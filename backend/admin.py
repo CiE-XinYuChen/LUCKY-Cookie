@@ -744,6 +744,11 @@ def get_allocations():
 @admin_required
 def delete_allocation(allocation_id):
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     
     try:
         # Get allocation details by allocation_id
@@ -849,6 +854,11 @@ def get_room_type_allocations():
 def create_room_type_allocation():
     data = request.get_json()
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     
     required_fields = ['user_id', 'room_type']
     if not data or not all(field in data for field in required_fields):
@@ -895,6 +905,11 @@ def import_room_type_allocations():
         return jsonify({'error': '只支持CSV文件'}), 400
     
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     
     try:
         df = pd.read_csv(io.StringIO(file.read().decode('utf-8')))
@@ -1501,6 +1516,11 @@ def update_allocation(allocation_id):
         return jsonify({'error': '请求数据不能为空'}), 400
     
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     
     try:
         with db.get_db_connection() as conn:

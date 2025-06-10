@@ -196,6 +196,11 @@ def publish_lottery(setting_id):
 @jwt_required()
 def get_lottery_results():
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     user = db.get_user_by_id(current_user_id)
     
     lottery_id = request.args.get('lottery_id', type=int)
@@ -338,6 +343,11 @@ def get_buildings_for_selection():
 @jwt_required()
 def get_available_rooms():
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     user = db.get_user_by_id(current_user_id)
     
     if user and user['is_admin']:
@@ -447,6 +457,11 @@ def get_available_rooms():
 @jwt_required()
 def get_my_selection():
     current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
     selection = db.get_user_room_selection(current_user_id)
     
     if not selection:
