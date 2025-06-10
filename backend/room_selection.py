@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
+from .auth import jwt_required, get_jwt_identity
 from . import database as db
 import time
 import threading

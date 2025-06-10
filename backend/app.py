@@ -1,6 +1,6 @@
 import os
 from flask import Flask, render_template, send_from_directory, request, jsonify
-from flask_jwt_extended import JWTManager
+# from flask_jwt_extended import JWTManager  # 不再使用JWT
 from flask_cors import CORS
 from config import config
 from . import database as db
@@ -23,7 +23,7 @@ def create_app(config_name=None):
     with app.app_context():
         db.init_db()
     
-    jwt = JWTManager(app)
+    # jwt = JWTManager(app)  # 不再使用JWT
     
     # 动态CORS配置，支持生产环境
     cors_origins = app.config.get('CORS_ORIGINS', ['http://localhost:32228', 'http://127.0.0.1:32228'])
