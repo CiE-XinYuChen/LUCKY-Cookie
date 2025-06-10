@@ -91,7 +91,9 @@ def get_current_user():
     user_id = verify_token(token)
     
     if user_id:
-        return db.get_user_by_id(user_id)
+        user = db.get_user_by_id(user_id)
+        # 确保返回字典格式
+        return dict(user) if user else None
     return None
 
 def simple_auth_required(f):
@@ -102,8 +104,8 @@ def simple_auth_required(f):
         if not user:
             return jsonify({'error': '未登录或登录已过期'}), 401
         
-        # 将用户信息添加到请求上下文
-        request.current_user = user
+        # 将用户信息添加到请求上下文（转换为字典）
+        request.current_user = dict(user) if user else None
         return f(*args, **kwargs)
     return decorated_function
 
@@ -115,11 +117,13 @@ def simple_admin_required(f):
         if not user:
             return jsonify({'error': '未登录或登录已过期'}), 401
         
-        if not user.get('is_admin'):
+        # 转换为字典以使用get方法
+        user_dict = dict(user) if user else {}
+        if not user_dict.get('is_admin'):
             return jsonify({'error': '需要管理员权限'}), 403
         
-        # 将用户信息添加到请求上下文
-        request.current_user = user
+        # 将用户信息添加到请求上下文（转换为字典）
+        request.current_user = user_dict
         return f(*args, **kwargs)
     return decorated_function
 

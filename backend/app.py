@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, render_template, send_from_directory, request, jsonify
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config import config
@@ -56,10 +56,29 @@ def create_app(config_name=None):
     
     @app.errorhandler(404)
     def not_found(error):
+        # 对API请求返回JSON
+        if request.path.startswith('/api/'):
+            return jsonify({'error': '请求的资源不存在'}), 404
         return render_template('404.html'), 404
     
     @app.errorhandler(500)
     def internal_error(error):
+        # 对API请求返回JSON
+        if request.path.startswith('/api/'):
+            app.logger.error(f"内部服务器错误: {str(error)}")
+            return jsonify({'error': '服务器内部错误'}), 500
+        return render_template('500.html'), 500
+    
+    @app.errorhandler(Exception)
+    def handle_exception(error):
+        # 记录错误
+        app.logger.error(f"未处理的异常: {str(error)}", exc_info=True)
+        
+        # 对API请求返回JSON
+        if request.path.startswith('/api/'):
+            return jsonify({'error': '服务器错误，请稍后重试'}), 500
+        
+        # 其他请求返回500页面
         return render_template('500.html'), 500
     
     return app
