@@ -25,7 +25,9 @@ def create_app(config_name=None):
     
     jwt = JWTManager(app)
     
-    CORS(app, origins=['http://localhost:32228', 'http://127.0.0.1:32228'])
+    # 动态CORS配置，支持生产环境
+    cors_origins = app.config.get('CORS_ORIGINS', ['http://localhost:32228', 'http://127.0.0.1:32228'])
+    CORS(app, origins=cors_origins, supports_credentials=True)
     
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)

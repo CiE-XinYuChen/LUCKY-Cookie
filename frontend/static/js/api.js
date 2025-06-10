@@ -24,17 +24,32 @@ class API {
 
         try {
             const response = await fetch(this.baseURL + url, config);
+            
+            // 检查响应状态
+            if (response.status === 401) {
+                // Token过期或无效，清除本地存储并跳转登录
+                this.logout();
+                if (window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
+                throw new Error('登录已过期，请重新登录');
+            }
+            
+            if (response.status === 403) {
+                throw new Error('权限不足');
+            }
+            
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || '请求失败');
+                throw new Error(data.error || `请求失败 (${response.status})`);
             }
 
             return data;
         } catch (error) {
-            if (error.message.includes('401') || error.message.includes('token')) {
-                this.logout();
-                window.location.href = '/login';
+            // 网络错误或其他异常
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                throw new Error('网络连接失败，请检查网络状态');
             }
             throw error;
         }
@@ -79,6 +94,27 @@ class API {
         this.token = null;
         localStorage.removeItem('access_token');
         localStorage.removeItem('user');
+    }
+
+    // 验证token是否有效
+    async verifyToken() {
+        if (!this.token) {
+            return false;
+        }
+        
+        try {
+            const response = await this.get('/api/auth/verify-token');
+            return response.valid;
+        } catch (error) {
+            // Token无效或过期
+            this.logout();
+            return false;
+        }
+    }
+
+    // 更新token
+    updateToken() {
+        this.token = localStorage.getItem('access_token');
     }
 
     // 认证相关 API

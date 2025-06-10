@@ -9,8 +9,13 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         try:
+            # 验证JWT token
             verify_jwt_in_request()
             current_user_id = get_jwt_identity()
+            
+            if not current_user_id:
+                return jsonify({'error': 'Token无效或已过期'}), 401
+            
             user = db.get_user_by_id(current_user_id)
             
             if not user:
@@ -21,7 +26,14 @@ def admin_required(f):
                 
             return f(*args, **kwargs)
         except Exception as e:
-            return jsonify({'error': '权限验证失败'}), 403
+            current_app.logger.error(f"权限验证失败: {str(e)}")
+            # 区分不同类型的验证失败
+            if 'expired' in str(e).lower():
+                return jsonify({'error': 'Token已过期，请重新登录'}), 401
+            elif 'invalid' in str(e).lower() or 'decode' in str(e).lower():
+                return jsonify({'error': 'Token无效，请重新登录'}), 401
+            else:
+                return jsonify({'error': '权限验证失败'}), 403
     return decorated_function
 
 @auth_bp.route('/login', methods=['POST'])
