@@ -30,6 +30,9 @@ def init_db():
     conn = get_db()
     c = conn.cursor()
     
+    # 启用外键约束
+    c.execute("PRAGMA foreign_keys = ON")
+    
     # Users table
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,6 +142,22 @@ def init_db():
         FOREIGN KEY (bed_id) REFERENCES beds(id),
         FOREIGN KEY (operated_by) REFERENCES users(id)
     )''')
+    
+    # Auth tokens table (for simple auth system)
+    c.execute('''CREATE TABLE IF NOT EXISTS auth_tokens (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        token TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME NOT NULL,
+        is_active INTEGER DEFAULT 1,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )''')
+    
+    # Create indexes for auth_tokens
+    c.execute('CREATE INDEX IF NOT EXISTS idx_auth_tokens_token ON auth_tokens(token)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_auth_tokens_expires_at ON auth_tokens(expires_at)')
     
     conn.commit()
     
