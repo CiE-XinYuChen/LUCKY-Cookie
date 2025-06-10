@@ -1,27 +1,46 @@
-"""
-认证模块 V2 - 使用简单的基于数据库的token认证
-"""
+from functools import wraps
 from flask import Blueprint, request, jsonify, current_app
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, verify_jwt_in_request
 from . import database as db
-from .simple_auth import (
-    init_auth_table, create_auth_token, verify_token, 
-    invalidate_token, simple_auth_required, simple_admin_required,
-    get_current_user
-)
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 
-# 导出装饰器供其他模块使用
-admin_required = simple_admin_required
-jwt_required = simple_auth_required  # 保持接口兼容
-
-# 模拟JWT的get_jwt_identity函数
-def get_jwt_identity():
-    """获取当前用户ID（保持接口兼容）"""
-    user = get_current_user()
-    if user:
-        return str(user['id'])  # 返回字符串格式的ID
-    return None
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        try:
+            # 验证JWT token
+            verify_jwt_in_request()
+            current_user_id = get_jwt_identity()
+            
+            if not current_user_id:
+                return jsonify({'error': 'Token无效或已过期'}), 401
+            
+            # 将字符串ID转换为整数
+            try:
+                user_id = int(current_user_id)
+            except (ValueError, TypeError):
+                return jsonify({'error': 'Token格式错误'}), 401
+            
+            user = db.get_user_by_id(user_id)
+            
+            if not user:
+                return jsonify({'error': '用户不存在'}), 403
+                
+            if not user['is_admin']:
+                return jsonify({'error': '需要管理员权限'}), 403
+                
+            return f(*args, **kwargs)
+        except Exception as e:
+            current_app.logger.error(f"权限验证失败: {str(e)}")
+            # 区分不同类型的验证失败
+            if 'expired' in str(e).lower():
+                return jsonify({'error': 'Token已过期，请重新登录'}), 401
+            elif 'invalid' in str(e).lower() or 'decode' in str(e).lower():
+                return jsonify({'error': 'Token无效，请重新登录'}), 401
+            else:
+                return jsonify({'error': '权限验证失败'}), 403
+    return decorated_function
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
@@ -38,14 +57,12 @@ def login():
     if not user or not db.check_password(user, password):
         return jsonify({'error': '用户名或密码错误'}), 401
     
-    # 创建认证token
-    token = create_auth_token(user['id'])
-    if not token:
-        return jsonify({'error': '登录失败，请稍后重试'}), 500
+    # JWT identity必须是字符串
+    access_token = create_access_token(identity=str(user['id']))
     
     return jsonify({
         'message': '登录成功',
-        'access_token': token,
+        'access_token': access_token,
         'user': {
             'id': user['id'],
             'username': user['username'],
@@ -54,17 +71,6 @@ def login():
             'created_at': user['created_at']
         }
     }), 200
-
-@auth_bp.route('/logout', methods=['POST'])
-@simple_auth_required
-def logout():
-    """注销登录"""
-    auth_header = request.headers.get('Authorization', '')
-    if auth_header.startswith('Bearer '):
-        token = auth_header[7:]
-        invalidate_token(token)
-    
-    return jsonify({'message': '已退出登录'}), 200
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
@@ -90,9 +96,19 @@ def register():
         return jsonify({'error': '注册失败'}), 500
 
 @auth_bp.route('/profile', methods=['GET'])
-@simple_auth_required
+@jwt_required()
 def get_profile():
-    user = request.current_user
+    current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
+    
+    user = db.get_user_by_id(user_id)
+    
+    if not user:
+        return jsonify({'error': '用户不存在'}), 404
     
     return jsonify({
         'user': {
@@ -105,9 +121,20 @@ def get_profile():
     }), 200
 
 @auth_bp.route('/change-password', methods=['POST'])
-@simple_auth_required
+@jwt_required()
 def change_password():
-    user = request.current_user
+    current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
+    
+    user = db.get_user_by_id(user_id)
+    
+    if not user:
+        return jsonify({'error': '用户不存在'}), 404
+    
     data = request.get_json()
     
     if not data or not all(key in data for key in ['old_password', 'new_password']):
@@ -126,18 +153,28 @@ def change_password():
         import bcrypt
         password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
-        conn = db.get_db()
-        conn.execute('UPDATE users SET password_hash = ? WHERE id = ?', (password_hash, user['id']))
-        conn.commit()
+        with db.get_db_connection() as conn:
+            c = conn.cursor()
+            c.execute('UPDATE users SET password_hash = ? WHERE id = ?', (password_hash, user_id))
         
         return jsonify({'message': '密码修改成功'}), 200
     except Exception as e:
         return jsonify({'error': '密码修改失败'}), 500
 
 @auth_bp.route('/verify-token', methods=['GET'])
-@simple_auth_required
-def verify_token_endpoint():
-    user = request.current_user
+@jwt_required()
+def verify_token():
+    current_user_id = get_jwt_identity()
+    # 将字符串ID转换为整数
+    try:
+        user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({'error': 'Token格式错误'}), 401
+    
+    user = db.get_user_by_id(user_id)
+    
+    if not user:
+        return jsonify({'error': '用户不存在'}), 404
     
     return jsonify({
         'valid': True,
