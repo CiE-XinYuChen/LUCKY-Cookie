@@ -1,5 +1,36 @@
 # 生产环境部署指南
 
+## JWT签名验证失败问题（最新更新）
+
+### 问题原因
+JWT "Signature verification failed" 错误通常由以下原因导致：
+1. 应用重启后JWT密钥改变
+2. 前后端使用了不同的密钥
+3. Token在一个环境生成，在另一个环境验证
+
+### 解决方案
+系统现在使用持久化密钥管理器，确保密钥在应用重启后保持一致。
+
+#### 密钥管理
+```bash
+# 查看当前密钥
+python manage_keys.py show
+
+# 重新生成密钥（会使所有token失效）
+python manage_keys.py regenerate
+```
+
+#### 首次部署
+```bash
+# 系统会自动生成并保存密钥到 data/secret_keys.json
+python app.py
+```
+
+#### 密钥优先级
+1. 环境变量（如果设置）
+2. 持久化密钥文件（data/secret_keys.json）
+3. 自动生成新密钥（仅在文件不存在时）
+
 ## 权限验证失败问题解决方案
 
 ### 问题分析

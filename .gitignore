@@ -45,6 +45,10 @@ logs/
 *.db
 *.sqlite3
 
+# Secret keys
+data/secret_keys.json
+secret_keys.json
+
 # Uploads
 uploads/*
 !uploads/.gitkeep

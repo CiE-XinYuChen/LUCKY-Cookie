@@ -1,8 +1,10 @@
 import os
+from secret_key_manager import key_manager
 
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'jwt-secret-key-change-in-production'
+    # 优先使用环境变量，否则使用持久化的密钥
+    SECRET_KEY = os.environ.get('SECRET_KEY') or key_manager.get_secret_key()
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or key_manager.get_jwt_secret_key()
     DATABASE_NAME = 'dorm_lottery.db'
     
     # 上传文件配置
@@ -22,8 +24,8 @@ class DevelopmentConfig(Config):
 
 class ProductionConfig(Config):
     DEBUG = False
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'production-secret-key-must-be-changed'
-    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY') or 'production-jwt-secret-key-must-be-changed'
+    # 生产环境也使用相同的密钥管理逻辑
+    # 优先环境变量，其次持久化密钥
     # 生产环境CORS配置 - 可以设置具体域名
     CORS_ORIGINS = [
         'https://ybu.room.shaynechen.tech',
