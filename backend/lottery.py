@@ -32,7 +32,7 @@ def lottery_result_to_dict(result):
     }
 
 @lottery_bp.route('/settings', methods=['GET'])
-@jwt_required()
+@jwt_required
 def get_lottery_settings():
     conn = db.get_db()
     c = conn.cursor()
@@ -193,7 +193,7 @@ def publish_lottery(setting_id):
         return jsonify({'error': f'公布失败: {str(e)}'}), 500
 
 @lottery_bp.route('/results', methods=['GET'])
-@jwt_required()
+@jwt_required
 def get_lottery_results():
     current_user_id = get_jwt_identity()
     # 将字符串ID转换为整数
@@ -311,7 +311,7 @@ def update_lottery_result(result_id):
         return jsonify({'error': '更新失败'}), 500
 
 @lottery_bp.route('/buildings', methods=['GET'])
-@jwt_required()
+@jwt_required
 def get_buildings_for_selection():
     """获取有可用房间的楼栋列表（供普通用户选择宿舍时使用）"""
     conn = db.get_db()
@@ -340,7 +340,7 @@ def get_buildings_for_selection():
     }), 200
 
 @lottery_bp.route('/rooms/available', methods=['GET'])
-@jwt_required()
+@jwt_required
 def get_available_rooms():
     current_user_id = get_jwt_identity()
     # 将字符串ID转换为整数
@@ -454,7 +454,7 @@ def get_available_rooms():
     }), 200
 
 @lottery_bp.route('/my-selection', methods=['GET'])
-@jwt_required()
+@jwt_required
 def get_my_selection():
     current_user_id = get_jwt_identity()
     # 将字符串ID转换为整数

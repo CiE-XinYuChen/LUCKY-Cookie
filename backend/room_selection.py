@@ -36,7 +36,7 @@ class MemoryLock:
 memory_lock = MemoryLock()
 
 @room_selection_bp.route('/select', methods=['POST'])
-@jwt_required()
+@jwt_required
 def select_room():
     current_user_id = get_jwt_identity()
     # 将字符串ID转换为整数
@@ -159,7 +159,7 @@ def select_room():
         memory_lock.release(lock_key)
 
 @room_selection_bp.route('/cancel', methods=['POST'])
-@jwt_required()
+@jwt_required
 def cancel_selection():
     current_user_id = get_jwt_identity()
     # 将字符串ID转换为整数
@@ -202,7 +202,7 @@ def cancel_selection():
         memory_lock.release(lock_key)
 
 @room_selection_bp.route('/confirm', methods=['POST'])
-@jwt_required()
+@jwt_required
 def confirm_selection():
     current_user_id = get_jwt_identity()
     # 将字符串ID转换为整数
@@ -250,7 +250,7 @@ def confirm_selection():
         return jsonify({'error': '确认失败，请重试'}), 500
 
 @room_selection_bp.route('/change', methods=['POST'])
-@jwt_required()
+@jwt_required
 def change_selection():
     current_user_id = get_jwt_identity()
     # 将字符串ID转换为整数
@@ -382,7 +382,7 @@ def change_selection():
         memory_lock.release(new_lock_key)
 
 @room_selection_bp.route('/statistics', methods=['GET'])
-@jwt_required()
+@jwt_required
 def get_selection_statistics():
     current_user_id = get_jwt_identity()
     # 将字符串ID转换为整数
